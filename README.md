@@ -70,6 +70,7 @@ js/app.js        board, controls and game flow
 manifest.webmanifest  app name, colors and icons for installing
 sw.js            service worker: stores the app for offline use
 icons/           app icons
+pieces/cburnett/ chess piece images (see credits below)
 ```
 
 ## Publish it with GitHub Pages
@@ -82,3 +83,11 @@ icons/           app icons
    `https://<your-username>.github.io/<repository-name>/`.
 
 Every time you push changes to that branch, the site updates automatically.
+
+## Credits
+
+Chess pieces: the **cburnett** set by
+**[Colin M.L. Burnett](https://en.wikipedia.org/wiki/User:Cburnett)**, licensed under the
+**GNU GPL v2 or later** (as distributed by [Lichess](https://github.com/lichess-org/lila)).
+The two bishops were modified: the cross on the mitre is replaced by the traditional diagonal
+slit. The license text and details are in [`pieces/cburnett/`](pieces/cburnett/README.md).

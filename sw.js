@@ -5,7 +5,7 @@
  * Changed files are picked up automatically (see the fetch handler). Bump
  * VERSION only when you add, rename or remove files in FILES.
  */
-const VERSION = 'v3';
+const VERSION = 'v4';
 const CACHE = 'chess-coach-' + VERSION;
 const FILES = [
   './',
@@ -18,6 +18,18 @@ const FILES = [
   'js/facts.js',
   'js/coach.js',
   'js/app.js',
+  'pieces/cburnett/wK.svg',
+  'pieces/cburnett/wQ.svg',
+  'pieces/cburnett/wR.svg',
+  'pieces/cburnett/wB.svg',
+  'pieces/cburnett/wN.svg',
+  'pieces/cburnett/wP.svg',
+  'pieces/cburnett/bK.svg',
+  'pieces/cburnett/bQ.svg',
+  'pieces/cburnett/bR.svg',
+  'pieces/cburnett/bB.svg',
+  'pieces/cburnett/bN.svg',
+  'pieces/cburnett/bP.svg',
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/maskable-512.png',

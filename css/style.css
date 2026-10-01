@@ -82,9 +82,9 @@ button { font: inherit; color: inherit; }
 .logo {
   display: grid; place-items: center;
   width: 34px; height: 34px; border-radius: 10px;
-  background: var(--accent); color: #fff; font-size: 22px; line-height: 1;
-  font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", "DejaVu Sans", "Apple Symbols", serif;
+  background: var(--accent);
 }
+.logo img { width: 28px; height: 28px; display: block; }
 .top-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
 /* language switch */
@@ -227,31 +227,38 @@ button { font: inherit; color: inherit; }
 }
 .sq.drop-over { box-shadow: inset 0 0 0 calc(var(--sq) * .06) rgba(255, 255, 255, .75); }
 
+/* Pieces: the cburnett set by Colin M.L. Burnett (GPLv2+, see pieces/cburnett/README.md). */
 .piece {
   position: relative;
   z-index: 1;
-  font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", "Noto Sans Symbols", "DejaVu Sans", "Apple Symbols", "Arial Unicode MS", serif;
-  font-size: calc(var(--sq) * .8);
-  line-height: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
   pointer-events: none;
-  transform: translateY(-2%);
+  filter: drop-shadow(0 calc(var(--sq) * .02) calc(var(--sq) * .02) rgba(0, 0, 0, .28));
 }
-.piece.w {
-  color: #fbfaf7;
-  -webkit-text-stroke: calc(var(--sq) * .026) #222;
-  paint-order: stroke fill;
-  text-shadow: 0 calc(var(--sq) * .03) calc(var(--sq) * .05) rgba(0, 0, 0, .35);
-}
-.piece.b {
-  color: #232323;
-  -webkit-text-stroke: calc(var(--sq) * .012) #000;
-  text-shadow: 0 calc(var(--sq) * .03) calc(var(--sq) * .05) rgba(0, 0, 0, .3);
-}
+.piece.wK { background-image: url(../pieces/cburnett/wK.svg); }
+.piece.wQ { background-image: url(../pieces/cburnett/wQ.svg); }
+.piece.wR { background-image: url(../pieces/cburnett/wR.svg); }
+.piece.wB { background-image: url(../pieces/cburnett/wB.svg); }
+.piece.wN { background-image: url(../pieces/cburnett/wN.svg); }
+.piece.wP { background-image: url(../pieces/cburnett/wP.svg); }
+.piece.bK { background-image: url(../pieces/cburnett/bK.svg); }
+.piece.bQ { background-image: url(../pieces/cburnett/bQ.svg); }
+.piece.bR { background-image: url(../pieces/cburnett/bR.svg); }
+.piece.bB { background-image: url(../pieces/cburnett/bB.svg); }
+.piece.bN { background-image: url(../pieces/cburnett/bN.svg); }
+.piece.bP { background-image: url(../pieces/cburnett/bP.svg); }
 .sq.drag-src .piece { opacity: .3; }
 
 .ghost-piece {
   position: fixed;
   z-index: 1000;
+  width: var(--sq);
+  height: var(--sq);
   pointer-events: none;
   transform: translate(-50%, -55%) scale(1.12);
 }
@@ -283,15 +290,13 @@ button { font: inherit; color: inherit; }
 .player-name { display: flex; align-items: center; gap: 8px; font-weight: 600; white-space: nowrap; }
 .player-name .swatch { width: 14px; height: 14px; }
 .captured { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 0; min-width: 0; }
-.captured .cap {
-  font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", "DejaVu Sans", "Apple Symbols", serif;
-  font-size: 1.15rem;
-  line-height: 1;
-  margin-left: -2px;
+.captured .cap { width: 22px; height: 22px; margin-left: -5px; filter: none; }
+@media (prefers-color-scheme: dark) {
+  /* keep black pieces visible on the dark page background */
+  .captured .cap.bK, .captured .cap.bQ, .captured .cap.bR, .captured .cap.bB, .captured .cap.bN, .captured .cap.bP {
+    filter: drop-shadow(0 0 1px rgba(255, 255, 255, .75));
+  }
 }
-.captured .cap.w { color: #fff; -webkit-text-stroke: .8px #333; paint-order: stroke fill; }
-.captured .cap.b { color: #2a2a2a; }
-@media (prefers-color-scheme: dark) { .captured .cap.b { color: #111; -webkit-text-stroke: .6px #999; } }
 .captured .adv { margin-left: 6px; font-size: .8rem; font-weight: 700; color: var(--muted); }
 .player-bar.active .player-name::after {
   content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
@@ -533,6 +538,7 @@ button { font: inherit; color: inherit; }
   cursor: pointer;
 }
 .promo-choices button:hover { border-color: var(--accent); }
+.promo-choices .piece { width: 60px; height: 60px; }
 
 /* ---------- glossary ---------- */
 .search {
@@ -619,3 +625,6 @@ button { font: inherit; color: inherit; }
 @media (display-mode: standalone) {
   .topbar { padding-top: max(10px, env(safe-area-inset-top)); }
 }
+
+.credits { max-width: 1240px; margin: 0 auto; padding: 4px 16px 24px; text-align: center; font-size: .75rem; color: var(--muted); }
+.credits a { color: inherit; }

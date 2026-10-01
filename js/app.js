@@ -4,7 +4,7 @@
   const { WHITE, BLACK, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, START_FEN,
     sqName, sqParse, mFrom, mTo, mPromo, mFlags } = Core;
 
-  const GLYPH = ['', '♟', '♞', '♝', '♜', '♛', '♚'];
+  const PIECE_CODE = ['', 'P', 'N', 'B', 'R', 'Q', 'K'];
   const VS = '︎'; // force text (not emoji) presentation
   const VAL = [0, 1, 3, 3, 5, 9, 0];
   const PIECE_NAMES = {
@@ -133,7 +133,7 @@
 
   function pieceHTML(p) {
     if (!p) return '';
-    return `<span class="piece ${p & BLACK ? 'b' : 'w'}">${GLYPH[p & 7]}${VS}</span>`;
+    return `<span class="piece ${p & BLACK ? 'b' : 'w'}${PIECE_CODE[p & 7]}"></span>`;
   }
 
   function renderBoard() {
@@ -673,7 +673,7 @@
         name = color === state.humanColor ? t('you') : `${t('computer')} · ${t(LEVEL_KEY[state.level])}`;
       } else name = colorName(color);
       const caps = taken[color].slice().sort((a, b) => VAL[b & 7] - VAL[a & 7])
-        .map(p => `<span class="cap ${p & BLACK ? 'b' : 'w'}">${GLYPH[p & 7]}${VS}</span>`).join('');
+        .map(p => `<span class="piece cap ${p & BLACK ? 'b' : 'w'}${PIECE_CODE[p & 7]}"></span>`).join('');
       const adv = mat[color] - mat[color ^ BLACK];
       const active = !state.over && g.turn === color;
       return { html: `<span class="player-name"><span class="swatch ${color === WHITE ? 'w' : 'b'}"></span>${esc(name)}</span>` +
