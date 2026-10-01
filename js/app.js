@@ -142,13 +142,23 @@
       (g.inCheck() ? g.kings[g.turn >> 3] : -1) : -1;
     const hint = state.hint;
     const movable = canInteract();
+    // The opponent's last move is shown in gold: every move in Two Players
+    // (the side to move always faces the player who just moved), and the
+    // computer's moves in the computer modes. Your own last move stays subtle.
+    let oppLast = false;
+    if (state.lastMove) {
+      const mover = g.board[state.lastMove.to] & BLACK;
+      oppLast = !isComputerGame() || mover !== state.humanColor;
+    }
     for (const [sq, el] of sqEls) {
       const r = sq >> 4, f = sq & 7;
       el.style.gridRow = flip ? r + 1 : 8 - r;
       el.style.gridColumn = flip ? 8 - f : f + 1;
       const p = g.board[sq];
       const cls = el.classList;
-      cls.toggle('last', !!state.lastMove && (state.lastMove.from === sq || state.lastMove.to === sq));
+      const onLast = !!state.lastMove && (state.lastMove.from === sq || state.lastMove.to === sq);
+      cls.toggle('last-opp', onLast && oppLast);
+      cls.toggle('last', onLast && !oppLast);
       cls.toggle('sel', state.selected === sq);
       cls.toggle('target', state.targets.includes(sq));
       cls.toggle('capture', state.targets.includes(sq) && (!!p || isEpTarget(sq)));
@@ -307,6 +317,12 @@
     state.hint = null;
     const st = g.status();
     state.over = st.over ? st : null;
+    if (state.over && !state.recorded) {
+      state.recorded = true;
+      recordGame(state.over);
+      nextFact();
+      $('endFact').hidden = false;
+    }
   }
 
   function humanMove(m) {
@@ -389,6 +405,7 @@
     state.hint = null;
     state.selected = -1; state.targets = [];
     state.coach = state.coach.filter(e => e.kind === 'info' || e.ply < state.moves.length);
+    $('endFact').hidden = true;
   }
 
   function undo() {
@@ -424,6 +441,8 @@
     state.selected = -1; state.targets = [];
     state.lastMove = null; state.over = null; state.busy = false; state.hint = null;
     state.coach = []; state.openTerms.clear(); state.openDemos.clear();
+    state.recorded = false;
+    $('endFact').hidden = true;
     state.humanColor = state.colorChoice === 'b' ? BLACK : state.colorChoice === 'r' ? (Math.random() < 0.5 ? WHITE : BLACK) : WHITE;
     if (!isComputerGame()) state.humanColor = WHITE;
     state.flipped = state.humanColor === BLACK;
@@ -698,6 +717,8 @@
     renderSetup();
     renderAll();
     if (!$('glossaryModal').hidden) renderGlossary();
+    if (!$('statsModal').hidden) renderStats();
+    renderFacts();
   }
 
   $('langToggle').addEventListener('click', () => {
@@ -709,7 +730,9 @@
   // ---------------------------------------------------------------- modals
   let lastFocus = null;
   function openModal(id) {
-    lastFocus = document.activeElement;
+    // Only one dialog at a time (the header stays clickable above them).
+    document.querySelectorAll('.modal').forEach(m => { if (m.id !== id && !m.hidden) m.hidden = true; });
+    if ($(id).hidden) lastFocus = document.activeElement;
     $(id).hidden = false;
     const f = $(id).querySelector('.selected, button, input');
     if (f) setTimeout(() => f.focus(), 0);
@@ -752,10 +775,136 @@
   $('btnNew').addEventListener('click', () => {
     setup.mode = state.mode; setup.level = state.level; setup.color = state.colorChoice;
     renderSetup();
+    nextFact();
     openModal('newGameModal');
   });
   $('btnUndo').addEventListener('click', undo);
   $('btnFlip').addEventListener('click', () => { state.flipped = !state.flipped; renderBoard(); renderBars(); });
+
+  // ---------------------------------------------------------------- statistics
+  // Each finished game is stored as one small record in localStorage.
+  function loadStats() {
+    const list = store.get('stats', []);
+    return Array.isArray(list) ? list : [];
+  }
+
+  function recordGame(over) {
+    const winner = over.reason === 'checkmate' ? over.winner : null;
+    const rec = { mode: state.mode, reason: over.reason, plies: state.moves.length, date: Date.now() };
+    if (isComputerGame()) {
+      rec.level = state.level;
+      rec.color = state.humanColor === WHITE ? 'w' : 'b';
+      rec.result = winner === null ? 'draw' : winner === state.humanColor ? 'win' : 'loss';
+    } else {
+      rec.result = winner === null ? 'draw' : winner === WHITE ? 'white' : 'black';
+    }
+    const list = loadStats();
+    list.push(rec);
+    store.set('stats', list);
+  }
+
+  state.statsColor = 'all';
+  function tally(records) {
+    const r = { played: records.length, win: 0, loss: 0, draw: 0, white: 0, black: 0 };
+    for (const x of records) r[x.result] = (r[x.result] || 0) + 1;
+    return r;
+  }
+  function pctCell(wins, played) {
+    if (!played) return '<td class="dim">—</td>';
+    const p = Math.round(wins / played * 100);
+    return `<td>${p}%<span class="pct-bar" aria-hidden="true"><i style="width:${p}%"></i></span></td>`;
+  }
+  function resultRow(label, r, cls) {
+    return `<tr${cls ? ` class="${cls}"` : ''}><td>${label}</td><td>${r.played}</td><td>${r.win}</td><td>${r.loss}</td><td>${r.draw}</td>${pctCell(r.win, r.played)}</tr>`;
+  }
+  function resultHead(first) {
+    return `<tr><th>${esc(first)}</th><th>${esc(t('played'))}</th><th>${esc(t('wins'))}</th><th>${esc(t('losses'))}</th><th>${esc(t('draws'))}</th><th>${esc(t('winPct'))}</th></tr>`;
+  }
+
+  function renderStats() {
+    document.querySelectorAll('#statsColor button').forEach(b => b.classList.toggle('selected', b.dataset.scolor === state.statsColor));
+    const all = loadStats();
+    const vsCpu = all.filter(x => x.mode === 'cpu' || x.mode === 'learn');
+    const shown = state.statsColor === 'all' ? vsCpu : vsCpu.filter(x => x.color === state.statsColor);
+    const body = $('statsBody');
+    $('btnResetStats').disabled = !all.length;
+    if (!all.length) { body.innerHTML = `<p class="empty">${esc(t('statsEmpty'))}</p>`; return; }
+
+    const o = tally(shown);
+    let html = `<div class="stats-section"><h3>${esc(t('overall'))}</h3><div class="stats-summary">` +
+      [['played', o.played], ['wins', o.win], ['losses', o.loss], ['draws', o.draw],
+        ['winPct', o.played ? Math.round(o.win / o.played * 100) + '%' : '—']]
+        .map(([k, v]) => `<div class="stat-tile"><div class="v">${v}</div><div class="k">${esc(t(k))}</div></div>`).join('') +
+      '</div></div>';
+
+    for (const mode of ['cpu', 'learn']) {
+      const recs = shown.filter(x => x.mode === mode);
+      html += `<div class="stats-section"><h3>${esc(t(mode === 'cpu' ? 'modeCpu' : 'modeLearn'))}</h3><div class="table-scroll"><table class="stats-table">` +
+        resultHead(t('level')) +
+        LEVELS.map(l => resultRow(esc(t(LEVEL_KEY[l])), tally(recs.filter(x => x.level === l)))).join('') +
+        resultRow(esc(t('total')), tally(recs), 'total') + '</table></div></div>';
+    }
+
+    html += `<div class="stats-section"><h3>${esc(t('byColor'))}</h3><div class="table-scroll"><table class="stats-table">` +
+      resultHead(t('playAs')) +
+      resultRow(`<span class="swatch w"></span> ${esc(t('white'))}`, tally(vsCpu.filter(x => x.color === 'w'))) +
+      resultRow(`<span class="swatch b"></span> ${esc(t('black'))}`, tally(vsCpu.filter(x => x.color === 'b'))) +
+      '</table></div></div>';
+
+    const pvp = tally(all.filter(x => x.mode === 'pvp'));
+    html += `<div class="stats-section"><h3>${esc(t('pvpStats'))}</h3><div class="table-scroll"><table class="stats-table">` +
+      `<tr><th>${esc(t('played'))}</th><th>${esc(t('whiteWins'))}</th><th>${esc(t('blackWins'))}</th><th>${esc(t('draws'))}</th></tr>` +
+      `<tr><td>${pvp.played}</td><td>${pvp.white}</td><td>${pvp.black}</td><td>${pvp.draw}</td></tr></table></div></div>`;
+    body.innerHTML = html;
+  }
+
+  $('btnStats').addEventListener('click', () => {
+    $('resetConfirm').hidden = true; $('resetDone').hidden = true; $('btnResetStats').hidden = false;
+    renderStats();
+    openModal('statsModal');
+  });
+  $('statsColor').addEventListener('click', e => {
+    const b = e.target.closest('[data-scolor]');
+    if (b) { state.statsColor = b.dataset.scolor; renderStats(); }
+  });
+  $('btnResetStats').addEventListener('click', () => {
+    $('resetConfirm').hidden = false; $('btnResetStats').hidden = true; $('resetDone').hidden = true;
+    $('btnResetNo').focus();
+  });
+  $('btnResetNo').addEventListener('click', () => {
+    $('resetConfirm').hidden = true; $('btnResetStats').hidden = false;
+  });
+  $('btnResetYes').addEventListener('click', () => {
+    store.set('stats', []);
+    $('resetConfirm').hidden = true; $('btnResetStats').hidden = false; $('resetDone').hidden = false;
+    renderStats();
+  });
+
+  // ---------------------------------------------------------------- did you know?
+  // Facts are dealt from a shuffled deck (kept in localStorage), so none
+  // repeats until every fact has been shown.
+  state.factIdx = -1;
+  function nextFact() {
+    let deck = store.get('factDeck', []);
+    deck = Array.isArray(deck) ? deck.filter(i => Number.isInteger(i) && i >= 0 && i < FACTS.length) : [];
+    if (!deck.length) {
+      deck = FACTS.map((_, i) => i);
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+      // Don't show the same fact twice in a row across a reshuffle.
+      if (deck.length > 1 && deck[0] === state.factIdx) deck.push(deck.shift());
+    }
+    state.factIdx = deck.shift();
+    store.set('factDeck', deck);
+    renderFacts();
+  }
+  function renderFacts() {
+    const f = FACTS[state.factIdx];
+    document.querySelectorAll('.fact-text').forEach(el => { el.textContent = f ? f[state.lang] : ''; });
+  }
+  document.addEventListener('click', e => { if (e.target.closest('[data-next-fact]')) nextFact(); });
 
   // Glossary
   const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -789,6 +938,7 @@
   if (!store.get('seenSetup', false)) {
     store.set('seenSetup', true);
     renderSetup();
+    nextFact();
     openModal('newGameModal');
   }
 })();

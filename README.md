@@ -9,7 +9,15 @@ Just open `index.html`.
   promotion (with a piece picker), threefold repetition, the fifty-move rule and insufficient material.
 - **Click or drag** pieces (mouse or touch). The selected piece and its legal moves are highlighted.
 - Turn indicator, **move list in algebraic notation**, captured pieces with material balance.
-- **New Game**, **Undo Move** and **Flip board** buttons.
+- The opponent's last move (the computer's, or the other player's) is highlighted in **gold**
+  on both squares until the next move.
+- **New Game**, **Undo Move** and **Flip board** buttons. Against the computer you choose to play
+  **White, Black or Random**; as Black the board is flipped so your pieces are at the bottom.
+- **Statistics**: every finished game is saved in the browser. See games played, wins, losses,
+  draws and win % for each mode and difficulty, filter by the color you played, and reset
+  (with confirmation).
+- **"Did you know?"** 💡 chess facts on the new-game screen and after each game, with a
+  *Next fact* button; facts don't repeat until all of them have been shown.
 - **English / Español** switch (always visible in the top bar). Everything is translated, including
   the coach and the glossary, and the move list uses Spanish notation (R, D, T, A, C) in Spanish.
   The choice is remembered.
@@ -38,6 +46,7 @@ css/style.css    styles (responsive, light/dark)
 js/core.js       chess rules, evaluation and search engine (also runs in a Web Worker)
 js/i18n.js       interface text in English and Spanish
 js/terms.js      glossary terms, openings and opening book
+js/facts.js      "Did you know?" facts
 js/coach.js      move analysis and coach explanations
 js/app.js        board, controls and game flow
 ```

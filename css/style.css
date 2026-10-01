@@ -13,7 +13,9 @@
   --radius: 14px;
   --sq-light: #eedab5;
   --sq-dark: #b48764;
-  --hl-last: rgba(214, 206, 74, .55);
+  --hl-last: rgba(214, 206, 74, .4);
+  --hl-gold: rgba(255, 190, 20, .5);
+  --hl-gold-ring: rgba(196, 136, 0, .95);
   --hl-sel: rgba(33, 110, 70, .55);
   --hl-hint: rgba(32, 132, 222, .45);
   --dot: rgba(20, 30, 20, .25);
@@ -65,7 +67,7 @@ button { font: inherit; color: inherit; }
 .topbar {
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 300; /* stays above dialogs so the language switch is always usable */
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -199,6 +201,11 @@ button { font: inherit; color: inherit; }
   pointer-events: none;
 }
 .sq.last::before { background: var(--hl-last); }
+/* Opponent's last move: golden fill plus a darker gold ring, drawn under the piece. */
+.sq.last-opp::before {
+  background: var(--hl-gold);
+  box-shadow: inset 0 0 0 calc(var(--sq) * .055) var(--hl-gold-ring);
+}
 .sq.sel::before { background: var(--hl-sel); }
 .sq.hint::before { background: var(--hl-hint); }
 .sq.check {
@@ -455,14 +462,14 @@ button { font: inherit; color: inherit; }
 .modal {
   position: fixed; inset: 0; z-index: 200;
   display: flex; align-items: center; justify-content: center;
-  padding: 16px;
+  padding: 72px 16px 16px;
   background: rgba(10, 12, 14, .5);
   animation: fade .15s ease-out;
 }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 .modal-box {
   width: min(560px, 100%);
-  max-height: min(92vh, 900px);
+  max-height: min(calc(100vh - 88px), 900px);
   overflow-y: auto;
   background: var(--surface);
   border-radius: 18px;
@@ -544,3 +551,45 @@ button { font: inherit; color: inherit; }
 .gl-head .gl-name { font-weight: 700; flex: 1; }
 .gl-item .term-slot { margin-top: 8px; }
 .gl-letter { font-weight: 800; color: var(--accent); margin: 10px 2px 0; font-size: .9rem; }
+
+/* ---------- did-you-know facts ---------- */
+.fact-card {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, #ffc107 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, #ffc107 40%, var(--border));
+}
+.fact-wrap { padding: 0; border: none; background: transparent; box-shadow: none; }
+.fact-wrap .fact-card { box-shadow: var(--shadow); }
+.modal-box .fact-card { margin-top: 16px; }
+.fact-icon { font-size: 1.5rem; line-height: 1.2; }
+.fact-title { font-weight: 800; font-size: .85rem; text-transform: uppercase; letter-spacing: .05em; color: #9a6b00; }
+@media (prefers-color-scheme: dark) { .fact-title { color: #f3c64f; } }
+.fact-text { margin: 4px 0 8px; }
+
+/* ---------- statistics ---------- */
+.stats-section { margin-top: 18px; }
+.stats-section h3 { margin: 0 0 8px; font-size: 1rem; }
+.stats-summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.stat-tile { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px; text-align: center; }
+.stat-tile .v { font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.stat-tile .k { font-size: .75rem; color: var(--muted); font-weight: 600; }
+@media (max-width: 520px) { .stats-summary { grid-template-columns: repeat(3, 1fr); } }
+.table-scroll { overflow-x: auto; }
+.stats-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: .92rem; }
+.stats-table th, .stats-table td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.stats-table th:first-child, .stats-table td:first-child { text-align: left; }
+.stats-table th { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.stats-table tr.total td { font-weight: 800; border-bottom: none; }
+.stats-table td.dim { color: var(--muted); }
+.pct-bar { display: inline-block; width: 46px; height: 6px; border-radius: 3px; background: var(--border); margin-left: 6px; vertical-align: middle; overflow: hidden; }
+.pct-bar i { display: block; height: 100%; background: var(--c-good); }
+.stats-reset { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border); }
+.btn.danger { color: #c0392b; border-color: color-mix(in srgb, #c0392b 40%, var(--border)); }
+.btn.danger:hover { background: color-mix(in srgb, #c0392b 10%, var(--surface)); }
+.confirm-actions .btn.danger { background: #c0392b; color: #fff; border-color: #c0392b; }
+.confirm-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, #c0392b 10%, var(--surface)); border: 1px solid color-mix(in srgb, #c0392b 35%, var(--border)); font-weight: 600; }
+.confirm-actions { display: flex; gap: 6px; }
