@@ -719,6 +719,7 @@
     if (!$('glossaryModal').hidden) renderGlossary();
     if (!$('statsModal').hidden) renderStats();
     renderFacts();
+    renderInstall();
   }
 
   $('langToggle').addEventListener('click', () => {
@@ -929,6 +930,71 @@
   }
   $('glossarySearch').addEventListener('input', renderGlossary);
   $('btnGlossary').addEventListener('click', () => { renderGlossary(); openModal('glossaryModal'); });
+
+  // ---------------------------------------------------------------- install & offline
+  // A service worker stores the app for offline play. It needs http(s), so
+  // nothing happens when index.html is opened straight from disk.
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isMacSafari = !isIOS && /Macintosh/.test(ua) && /Safari\//.test(ua) && !/Chrome|Chromium|Edg|Firefox/.test(ua);
+  const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const canServiceWorker = 'serviceWorker' in navigator && /^https?:$/.test(location.protocol);
+  let installPrompt = null;
+
+  let toastTimer = null;
+  function toast(key) {
+    $('toastText').textContent = t(key);
+    $('toast').dataset.key = key;
+    $('toast').hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { $('toast').hidden = true; }, 3500);
+  }
+
+  function renderInstall() {
+    $('btnInstall').hidden = !canServiceWorker || isStandalone();
+    const steps = isIOS ? ['iosStep1', 'iosStep2', 'iosStep3'] : isMacSafari ? ['macStep1', 'macStep2'] : ['otherStep1', 'otherStep2', 'otherStep3'];
+    $('installSteps').innerHTML = steps.map(k => `<li>${esc(t(k))}</li>`).join('');
+    if (!$('toast').hidden && $('toast').dataset.key) $('toastText').textContent = t($('toast').dataset.key);
+  }
+
+  // Chrome, Edge and Android browsers offer a native install prompt.
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    installPrompt = e;
+    renderInstall();
+  });
+  window.addEventListener('appinstalled', () => {
+    installPrompt = null;
+    $('btnInstall').hidden = true;
+    closeModal('installModal');
+    toast('installed');
+  });
+  $('btnInstall').addEventListener('click', async () => {
+    if (installPrompt) {
+      const p = installPrompt;
+      installPrompt = null;
+      p.prompt();
+      try { await p.userChoice; } catch (e) { /* ignore */ }
+    } else {
+      // Safari (iPhone, iPad, Mac) and others: show how to install by hand.
+      renderInstall();
+      openModal('installModal');
+    }
+  });
+  window.addEventListener('offline', () => toast('offlineNow'));
+
+  if (canServiceWorker) {
+    window.addEventListener('load', () => {
+      const firstInstall = !navigator.serviceWorker.controller;
+      navigator.serviceWorker.register('sw.js').then(reg => {
+        if (!firstInstall) return;
+        const sw = reg.installing || reg.waiting || reg.active;
+        const done = () => toast('offlineReady');
+        if (sw && sw.state === 'activated') done();
+        else if (sw) sw.addEventListener('statechange', () => { if (sw.state === 'activated') done(); });
+      }).catch(err => console.warn('Offline mode unavailable:', err));
+    });
+  }
 
   // ---------------------------------------------------------------- start
   buildBoard();

@@ -102,7 +102,21 @@ const UI_STRINGS = {
     resetYes: 'Yes, delete',
     resetDone: 'Statistics reset.',
     didYouKnow: 'Did you know?',
-    nextFact: 'Next fact'
+    nextFact: 'Next fact',
+    install: 'Install',
+    installTitle: 'Install Chess Coach',
+    installWhy: 'Install the app to open it from your home screen or desktop like any other app. It works without an internet connection.',
+    iosStep1: 'Tap the Share button (the square with an arrow ⬆) in Safari’s toolbar.',
+    iosStep2: 'Scroll down and tap “Add to Home Screen”.',
+    iosStep3: 'Tap “Add”. The Chess Coach icon will appear on your home screen.',
+    macStep1: 'In Safari’s menu bar, choose File → Add to Dock…',
+    macStep2: 'Click “Add”. Chess Coach will open from the Dock like a normal app.',
+    otherStep1: 'Open your browser’s menu (⋮ or ☰).',
+    otherStep2: 'Choose “Install app”, “Add to Home screen” or “Apps → Install this site as an app”.',
+    otherStep3: 'If you don’t see that option, try Chrome, Edge or Safari, which support installing web apps.',
+    offlineReady: 'Ready to play offline ✓',
+    installed: 'Chess Coach is installed! 🎉',
+    offlineNow: 'You’re offline — everything still works.'
   },
   es: {
     appTitle: 'Entrenador de Ajedrez',
@@ -206,7 +220,21 @@ const UI_STRINGS = {
     resetYes: 'Sí, borrar',
     resetDone: 'Estadísticas borradas.',
     didYouKnow: '¿Sabías que…?',
-    nextFact: 'Otro dato'
+    nextFact: 'Otro dato',
+    install: 'Instalar',
+    installTitle: 'Instalar Entrenador de Ajedrez',
+    installWhy: 'Instala la aplicación para abrirla desde tu pantalla de inicio o tu escritorio como cualquier otra app. Funciona sin conexión a internet.',
+    iosStep1: 'Toca el botón Compartir (el cuadrado con una flecha ⬆) en la barra de Safari.',
+    iosStep2: 'Desliza hacia abajo y toca «Añadir a pantalla de inicio».',
+    iosStep3: 'Toca «Añadir». El icono del Entrenador de Ajedrez aparecerá en tu pantalla de inicio.',
+    macStep1: 'En la barra de menús de Safari, elige Archivo → Añadir al Dock…',
+    macStep2: 'Haz clic en «Añadir». El Entrenador de Ajedrez se abrirá desde el Dock como una app normal.',
+    otherStep1: 'Abre el menú de tu navegador (⋮ o ☰).',
+    otherStep2: 'Elige «Instalar aplicación», «Añadir a pantalla de inicio» o «Aplicaciones → Instalar este sitio como aplicación».',
+    otherStep3: 'Si no ves esa opción, prueba con Chrome, Edge o Safari, que permiten instalar aplicaciones web.',
+    offlineReady: 'Listo para jugar sin conexión ✓',
+    installed: '¡El Entrenador de Ajedrez está instalado! 🎉',
+    offlineNow: 'Estás sin conexión: todo sigue funcionando.'
   }
 };
 
