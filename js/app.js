@@ -4,7 +4,7 @@
   const { WHITE, BLACK, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, START_FEN,
     sqName, sqParse, mFrom, mTo, mPromo, mFlags } = Core;
 
-  const GLYPH = ['', '♟', '♞', '♝', '♜', '♛', '♚'];
+  const PIECE_CODE = ['', 'P', 'N', 'B', 'R', 'Q', 'K'];
   const VS = '︎'; // force text (not emoji) presentation
   const VAL = [0, 1, 3, 3, 5, 9, 0];
   const PIECE_NAMES = {
@@ -133,7 +133,7 @@
 
   function pieceHTML(p) {
     if (!p) return '';
-    return `<span class="piece ${p & BLACK ? 'b' : 'w'}">${GLYPH[p & 7]}${VS}</span>`;
+    return `<span class="piece ${p & BLACK ? 'b' : 'w'}${PIECE_CODE[p & 7]}"></span>`;
   }
 
   function renderBoard() {
@@ -673,7 +673,7 @@
         name = color === state.humanColor ? t('you') : `${t('computer')} · ${t(LEVEL_KEY[state.level])}`;
       } else name = colorName(color);
       const caps = taken[color].slice().sort((a, b) => VAL[b & 7] - VAL[a & 7])
-        .map(p => `<span class="cap ${p & BLACK ? 'b' : 'w'}">${GLYPH[p & 7]}${VS}</span>`).join('');
+        .map(p => `<span class="piece cap ${p & BLACK ? 'b' : 'w'}${PIECE_CODE[p & 7]}"></span>`).join('');
       const adv = mat[color] - mat[color ^ BLACK];
       const active = !state.over && g.turn === color;
       return { html: `<span class="player-name"><span class="swatch ${color === WHITE ? 'w' : 'b'}"></span>${esc(name)}</span>` +
@@ -719,6 +719,7 @@
     if (!$('glossaryModal').hidden) renderGlossary();
     if (!$('statsModal').hidden) renderStats();
     renderFacts();
+    renderInstall();
   }
 
   $('langToggle').addEventListener('click', () => {
@@ -929,6 +930,119 @@
   }
   $('glossarySearch').addEventListener('input', renderGlossary);
   $('btnGlossary').addEventListener('click', () => { renderGlossary(); openModal('glossaryModal'); });
+
+  // ---------------------------------------------------------------- install & offline
+  // A service worker stores the app for offline play. It needs http(s), so
+  // nothing happens when index.html is opened straight from disk.
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/.test(ua);
+  const isMacSafari = !isIOS && /Macintosh/.test(ua) && /Safari\//.test(ua) && !/Chrome|Chromium|Edg|Firefox/.test(ua);
+  const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const canServiceWorker = 'serviceWorker' in navigator && /^https?:$/.test(location.protocol);
+  let installPrompt = null;
+
+  let toastTimer = null;
+  // Small notice at the bottom. With an action (e.g. "Reload") it stays until
+  // used or closed; otherwise it disappears after a few seconds.
+  function toast(key, actionKey, onAction) {
+    clearTimeout(toastTimer);
+    $('toastText').textContent = t(key);
+    $('toast').dataset.key = key;
+    const btn = $('toastAction');
+    btn.hidden = !actionKey;
+    btn.dataset.key = actionKey || '';
+    btn.textContent = actionKey ? t(actionKey) : '';
+    btn.onclick = onAction || null;
+    $('toast').hidden = false;
+    if (!actionKey) toastTimer = setTimeout(hideToast, 4000);
+  }
+  function hideToast() { $('toast').hidden = true; }
+  $('toastClose').addEventListener('click', hideToast);
+
+  function renderInstall() {
+    $('btnInstall').hidden = !canServiceWorker || isStandalone();
+    const steps = isIOS ? ['iosStep1', 'iosStep2', 'iosStep3'] : isMacSafari ? ['macStep1', 'macStep2'] :
+      isAndroid ? ['androidStep1', 'androidStep2'] : ['otherStep1', 'otherStep2', 'otherStep3'];
+    $('installSteps').innerHTML = steps.map(k => `<li>${esc(t(k))}</li>`).join('');
+    // Re-translate a visible notice when the language changes.
+    if (!$('toast').hidden && $('toast').dataset.key) $('toastText').textContent = t($('toast').dataset.key);
+    if ($('toastAction').dataset.key) $('toastAction').textContent = t($('toastAction').dataset.key);
+  }
+
+  // Chrome, Edge and Android browsers offer a native install prompt.
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    installPrompt = e;
+    renderInstall();
+  });
+  window.addEventListener('appinstalled', () => {
+    installPrompt = null;
+    $('btnInstall').hidden = true;
+    closeModal('installModal');
+    toast('installed');
+  });
+  $('btnInstall').addEventListener('click', async () => {
+    if (installPrompt) {
+      const p = installPrompt;
+      installPrompt = null;
+      p.prompt();
+      try { await p.userChoice; } catch (e) { /* ignore */ }
+    } else {
+      // Safari (iPhone, iPad, Mac) and others: show how to install by hand.
+      renderInstall();
+      openModal('installModal');
+    }
+  });
+  // Don't cover a pending "new version — Reload" notice.
+  window.addEventListener('offline', () => { if ($('toastAction').hidden || $('toast').hidden) toast('offlineNow'); });
+
+  if (canServiceWorker) {
+    let reloadOffered = false; // show the "new version" notice only once
+    const offerReload = () => {
+      if (reloadOffered) return;
+      reloadOffered = true;
+      toast('updateReady', 'reload', () => { hideToast(); location.reload(); });
+    };
+    let switching = false;
+    // A new service worker (new VERSION in sw.js) is installed and waiting:
+    // let the player choose when to switch, then reload once it takes over.
+    const offerSwitch = worker => toast('updateReady', 'reload', () => {
+      hideToast();
+      switching = true;
+      worker.postMessage('skipWaiting');
+    });
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (switching) { switching = false; location.reload(); }
+    });
+    // The service worker found newer copies of the app's files in the background.
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data && e.data.type === 'updated') offerReload();
+    });
+
+    window.addEventListener('load', () => {
+      const firstInstall = !navigator.serviceWorker.controller;
+      navigator.serviceWorker.register('sw.js').then(reg => {
+        if (firstInstall) {
+          const sw = reg.installing || reg.waiting || reg.active;
+          const done = () => toast('offlineReady');
+          if (sw && sw.state === 'activated') done();
+          else if (sw) sw.addEventListener('statechange', () => { if (sw.state === 'activated') done(); });
+        } else if (reg.waiting) {
+          offerSwitch(reg.waiting);
+        }
+        reg.addEventListener('updatefound', () => {
+          const worker = reg.installing;
+          if (!worker || firstInstall) return;
+          worker.addEventListener('statechange', () => {
+            if (worker.state === 'installed' && navigator.serviceWorker.controller) offerSwitch(worker);
+          });
+        });
+        // Apps left open for a long time (e.g. installed on a phone) still find updates.
+        setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
+      }).catch(err => console.warn('Offline mode unavailable:', err));
+    });
+  }
 
   // ---------------------------------------------------------------- start
   buildBoard();

@@ -38,6 +38,25 @@ Just open `index.html`.
   (what it is, why it's useful, an example) with a mini board showing the pattern.
 - **Glossary** button with all terms in alphabetical order.
 
+## Install it and play offline
+
+When the game is opened from a web address (such as the GitHub Pages link below), it works as an
+installable app (a PWA):
+
+- **After the first visit it works with no internet connection** — the app, the computer opponent,
+  the coach and the glossary are all stored on the device.
+- **Install button** (⬇ in the top bar):
+  - *Chrome / Edge (computer or Android)*: opens the browser's install prompt.
+  - *iPhone / iPad (Safari)*: shows how to use Share → *Add to Home Screen*.
+  - *Safari on Mac*: shows how to use File → *Add to Dock*.
+- Once installed it opens in its own window with the Chess Coach icon, like any other app.
+- When you publish changes, installed copies download them in the background and show
+  **"A new version is available — Reload"**, so players can switch whenever they like. Apps left
+  open for a long time also check for updates every hour.
+
+Offline mode and installing need the game to be served from a web address; opening `index.html`
+straight from your disk still works for playing, but without those two extras.
+
 ## Files
 
 ```
@@ -49,6 +68,10 @@ js/terms.js      glossary terms, openings and opening book
 js/facts.js      "Did you know?" facts
 js/coach.js      move analysis and coach explanations
 js/app.js        board, controls and game flow
+manifest.webmanifest  app name, colors and icons for installing
+sw.js            service worker: stores the app for offline use
+icons/           app icons
+pieces/cburnett/ chess piece images (see credits below)
 ```
 
 ## Publish it with GitHub Pages
@@ -61,3 +84,11 @@ js/app.js        board, controls and game flow
    `https://<your-username>.github.io/<repository-name>/`.
 
 Every time you push changes to that branch, the site updates automatically.
+
+## Credits
+
+Chess pieces: the **cburnett** set by
+**[Colin M.L. Burnett](https://en.wikipedia.org/wiki/User:Cburnett)**, licensed under the
+**GNU GPL v2 or later** (as distributed by [Lichess](https://github.com/lichess-org/lila)).
+The two bishops were modified: the cross on the mitre is replaced by the traditional diagonal
+slit. The license text and details are in [`pieces/cburnett/`](pieces/cburnett/README.md).
