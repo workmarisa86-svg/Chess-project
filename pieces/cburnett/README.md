@@ -16,5 +16,7 @@ set used on Wikipedia and Lichess.
   traditional diagonal slit, so the bishop is recognizable at a glance on small screens.
   Each modified file carries a note saying so.
 - All other files are unchanged.
+- The app icons in `icons/` are drawn with the (unchanged) white knight, `wN.svg`, on a green
+  background, so they fall under the same credit and license.
 
 These SVG files are themselves the editable source of the artwork.
