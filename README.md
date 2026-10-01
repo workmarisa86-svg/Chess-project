@@ -38,6 +38,24 @@ Just open `index.html`.
   (what it is, why it's useful, an example) with a mini board showing the pattern.
 - **Glossary** button with all terms in alphabetical order.
 
+## Install it / play offline
+
+Chess Coach is an installable app (PWA). After you open the published site once
+(it needs `https://`, e.g. GitHub Pages), it is stored on the device and opens and plays
+**without an internet connection**, on computers and phones. A short notice says
+*"Ready to play offline"* when it's done.
+
+- Tap **⬇ Install** in the top bar. Where the browser supports it (Chrome, Edge, Android),
+  this opens the install prompt; otherwise it shows the steps (iPhone/iPad: Share →
+  *Add to Home Screen*; Safari on Mac: File → *Add to Dock*).
+- Installed, it opens full screen from its own knight icon.
+- When a new version is published, a *"A new version is available — Reload"* notice appears.
+
+Opening `index.html` straight from disk still works, but offline storage needs a web server.
+
+**When you change any file**, bump `VERSION` at the top of `sw.js` (e.g. `'v1'` → `'v2'`)
+so visitors get the new files. If you add a new file, add it to the `ASSETS` list there too.
+
 ## Files
 
 ```
@@ -49,6 +67,10 @@ js/terms.js      glossary terms, openings and opening book
 js/facts.js      "Did you know?" facts
 js/coach.js      move analysis and coach explanations
 js/app.js        board, controls and game flow
+js/pwa.js        install button, offline/update notices, service worker registration
+sw.js            service worker: caches every file for offline play
+manifest.webmanifest  app name, colors and icons for installing
+icons/           app icons (SVG, PNG and maskable versions)
 ```
 
 ## Publish it with GitHub Pages

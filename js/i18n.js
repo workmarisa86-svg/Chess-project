@@ -102,7 +102,21 @@ const UI_STRINGS = {
     resetYes: 'Yes, delete',
     resetDone: 'Statistics reset.',
     didYouKnow: 'Did you know?',
-    nextFact: 'Next fact'
+    nextFact: 'Next fact',
+    install: 'Install',
+    installTitle: 'Install Chess Coach',
+    installIntro: 'Add Chess Coach to your device to open it like an app, from its own icon, full screen.',
+    installIosHead: 'iPhone / iPad (Safari):',
+    installIos: 'tap the Share button, then “Add to Home Screen”.',
+    installAndroidHead: 'Android (Chrome):',
+    installAndroid: 'open the ⋮ menu, then “Install app” or “Add to Home screen”.',
+    installDesktopHead: 'Computer:',
+    installDesktop: 'in Chrome or Edge, click the install icon in the address bar (or the menu → “Install Chess Coach”). In Safari on Mac, choose File → “Add to Dock”.',
+    installOffline: 'Once you have opened it here, it works without an internet connection — even if you don’t install it.',
+    gotIt: 'Got it',
+    offlineReady: 'Ready to play offline.',
+    updateReady: 'A new version is available.',
+    reload: 'Reload'
   },
   es: {
     appTitle: 'Entrenador de Ajedrez',
@@ -206,7 +220,21 @@ const UI_STRINGS = {
     resetYes: 'Sí, borrar',
     resetDone: 'Estadísticas borradas.',
     didYouKnow: '¿Sabías que…?',
-    nextFact: 'Otro dato'
+    nextFact: 'Otro dato',
+    install: 'Instalar',
+    installTitle: 'Instalar Entrenador de Ajedrez',
+    installIntro: 'Añade el Entrenador de Ajedrez a tu dispositivo para abrirlo como una app, desde su propio icono y a pantalla completa.',
+    installIosHead: 'iPhone / iPad (Safari):',
+    installIos: 'toca el botón Compartir y luego “Añadir a pantalla de inicio”.',
+    installAndroidHead: 'Android (Chrome):',
+    installAndroid: 'abre el menú ⋮ y elige “Instalar aplicación” o “Añadir a pantalla de inicio”.',
+    installDesktopHead: 'Ordenador:',
+    installDesktop: 'en Chrome o Edge, haz clic en el icono de instalar de la barra de direcciones (o menú → “Instalar Chess Coach”). En Safari para Mac, elige Archivo → “Añadir al Dock”.',
+    installOffline: 'Después de abrirlo aquí una vez, funciona sin conexión a internet, aunque no lo instales.',
+    gotIt: 'Entendido',
+    offlineReady: 'Listo para jugar sin conexión.',
+    updateReady: 'Hay una nueva versión disponible.',
+    reload: 'Recargar'
   }
 };
 

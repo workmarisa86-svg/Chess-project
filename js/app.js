@@ -931,6 +931,7 @@
   $('btnGlossary').addEventListener('click', () => { renderGlossary(); openModal('glossaryModal'); });
 
   // ---------------------------------------------------------------- start
+  window.ChessUI = { openModal }; // used by pwa.js (install help dialog)
   buildBoard();
   Engine.init();
   applyLanguage();
