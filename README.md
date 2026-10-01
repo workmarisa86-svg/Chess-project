@@ -57,6 +57,21 @@ installable app (a PWA):
 Offline mode and installing need the game to be served from a web address; opening `index.html`
 straight from your disk still works for playing, but without those two extras.
 
+### Sharing the domain with other apps
+
+All GitHub Pages sites of one account share a domain (`<user>.github.io`), and with it the
+browser's saved data. Chess Coach keeps strictly to its own space:
+
+- the service worker, manifest `id`, `start_url` and `scope` are all limited to `/Chess-project/`
+  (written as `./`, which the browser resolves relative to this folder);
+- the service worker ignores every request outside `/Chess-project/`;
+- saved settings and statistics use keys starting with `chess-coach.` (for example
+  `chess-coach.stats`), and offline caches are named `chess-coach-v…`. Only those are ever
+  read or deleted. Data saved by older versions under `chesscoach.` is moved over automatically.
+
+If you add more apps on the same domain, give each one its own scope and its own name prefixes
+too, and make sure their service workers only delete their own caches.
+
 ## Files
 
 ```

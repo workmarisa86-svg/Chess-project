@@ -8,8 +8,11 @@
  *  - If you add, rename or remove files in FILES, bump VERSION. The new worker
  *    then waits, and the same notice lets the player switch when they like.
  */
-const VERSION = 'v6';
-const CACHE = 'chess-coach-' + VERSION;
+const VERSION = 'v7';
+// Cache Storage is shared by every app on the same domain: this app only ever
+// creates, reads and deletes caches whose names start with 'chess-coach-'.
+const CACHE_PREFIX = 'chess-coach-';
+const CACHE = CACHE_PREFIX + VERSION;
 const FILES = [
   './',
   'index.html',
@@ -51,7 +54,7 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k.startsWith('chess-coach-') && k !== CACHE).map(k => caches.delete(k))))
+      .then(keys => Promise.all(keys.filter(k => k.startsWith(CACHE_PREFIX) && k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -83,7 +86,9 @@ function announceUpdate() {
 // when online refresh the stored copy in the background.
 self.addEventListener('fetch', event => {
   const req = event.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  // Only this app's own files (inside /Chess-project/); anything else on the
+  // domain, such as another app, goes straight to the network untouched.
+  if (req.method !== 'GET' || !req.url.startsWith(self.registration.scope)) return;
   event.respondWith(
     caches.open(CACHE).then(cache =>
       cache.match(req, { ignoreSearch: true }).then(hit => {
