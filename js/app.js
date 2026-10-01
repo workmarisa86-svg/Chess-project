@@ -16,9 +16,28 @@
   const $ = id => document.getElementById(id);
 
   // ---------------------------------------------------------------- storage
+  // localStorage is shared by every app on the same github.io domain, so all
+  // keys carry this app's own prefix: chess-coach.stats, chess-coach.lang, ...
+  const STORE_PREFIX = 'chess-coach.';
+  const OLD_PREFIX = 'chesscoach.'; // used by earlier versions
+  (function migrateOldKeys() {
+    try {
+      const old = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(OLD_PREFIX)) old.push(k);
+      }
+      for (const k of old) {
+        const nk = STORE_PREFIX + k.slice(OLD_PREFIX.length);
+        // Copy first, remove after: if copying fails, the old data stays put.
+        if (localStorage.getItem(nk) === null) localStorage.setItem(nk, localStorage.getItem(k));
+        localStorage.removeItem(k);
+      }
+    } catch (e) { /* storage unavailable: nothing to migrate */ }
+  })();
   const store = {
-    get(k, d) { try { const v = localStorage.getItem('chesscoach.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
-    set(k, v) { try { localStorage.setItem('chesscoach.' + k, JSON.stringify(v)); } catch (e) { /* ignore */ } }
+    get(k, d) { try { const v = localStorage.getItem(STORE_PREFIX + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(STORE_PREFIX + k, JSON.stringify(v)); } catch (e) { /* ignore */ } }
   };
 
   // ---------------------------------------------------------------- state
@@ -1022,7 +1041,9 @@
 
     window.addEventListener('load', () => {
       const firstInstall = !navigator.serviceWorker.controller;
-      navigator.serviceWorker.register('sw.js').then(reg => {
+      // Scope './' = this app's own folder (/Chess-project/ on GitHub Pages),
+      // so the worker never controls other apps on the same domain.
+      navigator.serviceWorker.register('sw.js', { scope: './' }).then(reg => {
         if (firstInstall) {
           const sw = reg.installing || reg.waiting || reg.active;
           const done = () => toast('offlineReady');
