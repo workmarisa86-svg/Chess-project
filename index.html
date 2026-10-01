@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Play chess against a friend or the computer, and learn with a coach that explains every move. English and Spanish.">
+  <meta name="theme-color" content="#2f6f57">
+  <title>Chess Coach</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%99%9E%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">♞&#xFE0E;</span>
+      <h1 data-i18n="appTitle">Chess Coach</h1>
+    </div>
+    <div class="top-actions">
+      <button type="button" id="btnGlossary" class="btn ghost">
+        <span aria-hidden="true">📖</span> <span data-i18n="glossary">Glossary</span>
+      </button>
+      <button type="button" id="langToggle" class="lang-switch" role="switch" aria-checked="false" data-i18n-aria="langLabel" aria-label="Language">
+        <span class="lang-opt" data-lang="en">EN</span>
+        <span class="lang-opt" data-lang="es">ES</span>
+        <span class="lang-knob" aria-hidden="true"></span>
+      </button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="board-col">
+      <div class="player-bar" id="barTop"></div>
+      <div class="board-wrap" id="boardWrap">
+        <div id="board" class="board" aria-label="Chessboard"></div>
+        <svg id="arrows" class="arrows" viewBox="0 0 800 800" aria-hidden="true"></svg>
+      </div>
+      <div class="player-bar" id="barBottom"></div>
+      <div class="controls">
+        <button type="button" id="btnNew" class="btn primary" data-i18n="newGame">New Game</button>
+        <button type="button" id="btnUndo" class="btn" data-i18n="undo" data-i18n-title="undoTitle">Undo Move</button>
+        <button type="button" id="btnFlip" class="btn icon" data-i18n-title="flip" data-i18n-aria="flip" aria-label="Flip board">⇅</button>
+      </div>
+    </section>
+
+    <aside class="side-col">
+      <div class="card status-card">
+        <div class="status-row">
+          <span id="turnDot" class="turn-dot" aria-hidden="true"></span>
+          <div id="status" class="status" aria-live="polite"></div>
+        </div>
+        <div id="modeInfo" class="mode-info"></div>
+      </div>
+
+      <div class="card coach-card" id="coachCard" hidden>
+        <h2><span aria-hidden="true">🎓</span> <span data-i18n="coach">Coach</span></h2>
+        <div id="coachLog" class="coach-log" aria-live="polite"></div>
+      </div>
+
+      <div class="card moves-card">
+        <h2 data-i18n="moves">Moves</h2>
+        <div id="moveList" class="move-list"></div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- New game dialog -->
+  <div class="modal" id="newGameModal" hidden>
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="newGameTitle">
+      <div class="modal-head">
+        <h2 id="newGameTitle" data-i18n="gameSetup">New game</h2>
+        <button type="button" class="btn icon close" data-close data-i18n-aria="close" aria-label="Close">✕</button>
+      </div>
+      <div class="field">
+        <div class="field-label" data-i18n="mode">Mode</div>
+        <div class="mode-options" id="modeOptions">
+          <button type="button" class="mode-card" data-mode="pvp">
+            <span class="mode-icon" aria-hidden="true">👥</span>
+            <span class="mode-title" data-i18n="modePvp"></span>
+            <span class="mode-desc" data-i18n="modePvpDesc"></span>
+          </button>
+          <button type="button" class="mode-card" data-mode="cpu">
+            <span class="mode-icon" aria-hidden="true">🤖</span>
+            <span class="mode-title" data-i18n="modeCpu"></span>
+            <span class="mode-desc" data-i18n="modeCpuDesc"></span>
+          </button>
+          <button type="button" class="mode-card" data-mode="learn">
+            <span class="mode-icon" aria-hidden="true">🎓</span>
+            <span class="mode-title" data-i18n="modeLearn"></span>
+            <span class="mode-desc" data-i18n="modeLearnDesc"></span>
+          </button>
+        </div>
+      </div>
+      <div class="field" id="levelField">
+        <div class="field-label" data-i18n="difficulty">Difficulty</div>
+        <div class="seg seg-5" id="levelOptions">
+          <button type="button" data-level="beginner" data-i18n="lvlBeginner"></button>
+          <button type="button" data-level="easy" data-i18n="lvlEasy"></button>
+          <button type="button" data-level="medium" data-i18n="lvlMedium"></button>
+          <button type="button" data-level="hard" data-i18n="lvlHard"></button>
+          <button type="button" data-level="impossible" data-i18n="lvlImpossible"></button>
+        </div>
+        <p class="hint-text" id="levelDesc"></p>
+      </div>
+      <div class="field" id="colorField">
+        <div class="field-label" data-i18n="playAs">Play as</div>
+        <div class="seg" id="colorOptions">
+          <button type="button" data-color="w"><span class="swatch w" aria-hidden="true"></span> <span data-i18n="white"></span></button>
+          <button type="button" data-color="b"><span class="swatch b" aria-hidden="true"></span> <span data-i18n="black"></span></button>
+          <button type="button" data-color="r"><span class="swatch r" aria-hidden="true"></span> <span data-i18n="random"></span></button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn" data-close data-i18n="cancel">Cancel</button>
+        <button type="button" class="btn primary" id="btnStart" data-i18n="start">Start game</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Glossary -->
+  <div class="modal" id="glossaryModal" hidden>
+    <div class="modal-box wide" role="dialog" aria-modal="true" aria-labelledby="glossaryTitle">
+      <div class="modal-head">
+        <h2 id="glossaryTitle"><span aria-hidden="true">📖</span> <span data-i18n="glossary">Glossary</span></h2>
+        <button type="button" class="btn icon close" data-close data-i18n-aria="close" aria-label="Close">✕</button>
+      </div>
+      <p class="hint-text" data-i18n="glossaryIntro"></p>
+      <input type="search" id="glossarySearch" class="search" data-i18n-placeholder="searchTerms" autocomplete="off">
+      <div id="glossaryList" class="glossary-list"></div>
+    </div>
+  </div>
+
+  <!-- Promotion -->
+  <div class="modal" id="promoModal" hidden>
+    <div class="modal-box small" role="dialog" aria-modal="true" aria-labelledby="promoTitle">
+      <h3 id="promoTitle" data-i18n="promoteTo">Promote to</h3>
+      <div id="promoChoices" class="promo-choices"></div>
+    </div>
+  </div>
+
+  <script src="js/core.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/terms.js"></script>
+  <script src="js/coach.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
