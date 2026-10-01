@@ -61,8 +61,14 @@ self.addEventListener('message', event => {
   if (event.data === 'skipWaiting') self.skipWaiting();
 });
 
-// A cheap fingerprint of a response, used to notice that a file changed.
-const stamp = res => res.headers.get('etag') || res.headers.get('last-modified') || res.headers.get('content-length') || '';
+// Did a file really change? Compare the stored and downloaded bytes.
+async function changed(oldRes, newRes) {
+  const [a, b] = await Promise.all([oldRes.arrayBuffer(), newRes.arrayBuffer()]);
+  if (a.byteLength !== b.byteLength) return true;
+  const x = new Uint8Array(a), y = new Uint8Array(b);
+  for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return true;
+  return false;
+}
 
 let notifyTimer = null;
 function announceUpdate() {
@@ -81,10 +87,15 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     caches.open(CACHE).then(cache =>
       cache.match(req, { ignoreSearch: true }).then(hit => {
-        const network = fetch(req, { cache: 'no-cache' }).then(res => {
+        const saved = hit ? hit.clone() : null; // copy before the page reads it
+        // 'no-cache' asks the server whether the file changed instead of reusing
+        // the browser's HTTP cache, so updates arrive promptly.
+        const network = fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then(res => {
           if (res.ok && res.type === 'basic') {
-            if (hit && stamp(hit) && stamp(res) && stamp(hit) !== stamp(res)) announceUpdate();
-            cache.put(req, res.clone());
+            const fresh = res.clone();
+            event.waitUntil(cache.put(req, fresh.clone())
+              .then(() => saved && changed(saved, fresh))
+              .then(isNew => { if (isNew) announceUpdate(); }));
           }
           return res;
         });

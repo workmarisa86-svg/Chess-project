@@ -994,10 +994,16 @@
       openModal('installModal');
     }
   });
-  window.addEventListener('offline', () => toast('offlineNow'));
+  // Don't cover a pending "new version — Reload" notice.
+  window.addEventListener('offline', () => { if ($('toastAction').hidden || $('toast').hidden) toast('offlineNow'); });
 
   if (canServiceWorker) {
-    const offerReload = () => toast('updateReady', 'reload', () => { hideToast(); location.reload(); });
+    let reloadOffered = false; // show the "new version" notice only once
+    const offerReload = () => {
+      if (reloadOffered) return;
+      reloadOffered = true;
+      toast('updateReady', 'reload', () => { hideToast(); location.reload(); });
+    };
     let switching = false;
     // A new service worker (new VERSION in sw.js) is installed and waiting:
     // let the player choose when to switch, then reload once it takes over.
