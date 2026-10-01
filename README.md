@@ -50,8 +50,9 @@ installable app (a PWA):
   - *iPhone / iPad (Safari)*: shows how to use Share → *Add to Home Screen*.
   - *Safari on Mac*: shows how to use File → *Add to Dock*.
 - Once installed it opens in its own window with the Chess Coach icon, like any other app.
-- When you publish changes, installed copies pick them up automatically the next time they open
-  with an internet connection.
+- When you publish changes, installed copies download them in the background and show
+  **"A new version is available — Reload"**, so players can switch whenever they like. Apps left
+  open for a long time also check for updates every hour.
 
 Offline mode and installing need the game to be served from a web address; opening `index.html`
 straight from your disk still works for playing, but without those two extras.

@@ -201,12 +201,17 @@
       </div>
       <p data-i18n="installWhy"></p>
       <ol class="install-steps" id="installSteps"></ol>
+      <p class="hint-text" data-i18n="installOffline"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn primary" data-close data-i18n="gotIt">Got it</button>
+      </div>
     </div>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite" hidden>
     <span id="toastText"></span>
-    <button type="button" class="btn small" id="toastAction" hidden></button>
+    <button type="button" class="btn small primary" id="toastAction" hidden></button>
+    <button type="button" class="btn small icon toast-close" id="toastClose" data-i18n-aria="close" aria-label="Close">✕</button>
   </div>
 
   <!-- Promotion -->

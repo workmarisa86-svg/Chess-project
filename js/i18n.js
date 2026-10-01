@@ -116,7 +116,13 @@ const UI_STRINGS = {
     otherStep3: 'If you don’t see that option, try Chrome, Edge or Safari, which support installing web apps.',
     offlineReady: 'Ready to play offline ✓',
     installed: 'Chess Coach is installed! 🎉',
-    offlineNow: 'You’re offline — everything still works.'
+    offlineNow: 'You’re offline — everything still works.',
+    androidStep1: 'In Chrome, open the ⋮ menu.',
+    androidStep2: 'Choose “Install app” or “Add to Home screen”.',
+    installOffline: 'Once you have opened it here, it works without an internet connection — even if you don’t install it.',
+    gotIt: 'Got it',
+    updateReady: 'A new version is available.',
+    reload: 'Reload'
   },
   es: {
     appTitle: 'Entrenador de Ajedrez',
@@ -234,7 +240,13 @@ const UI_STRINGS = {
     otherStep3: 'Si no ves esa opción, prueba con Chrome, Edge o Safari, que permiten instalar aplicaciones web.',
     offlineReady: 'Listo para jugar sin conexión ✓',
     installed: '¡El Entrenador de Ajedrez está instalado! 🎉',
-    offlineNow: 'Estás sin conexión: todo sigue funcionando.'
+    offlineNow: 'Estás sin conexión: todo sigue funcionando.',
+    androidStep1: 'En Chrome, abre el menú ⋮.',
+    androidStep2: 'Elige «Instalar aplicación» o «Añadir a pantalla de inicio».',
+    installOffline: 'Después de abrirlo aquí una vez, funciona sin conexión a internet, aunque no lo instales.',
+    gotIt: 'Entendido',
+    updateReady: 'Hay una nueva versión disponible.',
+    reload: 'Recargar'
   }
 };
 

@@ -936,25 +936,38 @@
   // nothing happens when index.html is opened straight from disk.
   const ua = navigator.userAgent;
   const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/.test(ua);
   const isMacSafari = !isIOS && /Macintosh/.test(ua) && /Safari\//.test(ua) && !/Chrome|Chromium|Edg|Firefox/.test(ua);
   const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
   const canServiceWorker = 'serviceWorker' in navigator && /^https?:$/.test(location.protocol);
   let installPrompt = null;
 
   let toastTimer = null;
-  function toast(key) {
+  // Small notice at the bottom. With an action (e.g. "Reload") it stays until
+  // used or closed; otherwise it disappears after a few seconds.
+  function toast(key, actionKey, onAction) {
+    clearTimeout(toastTimer);
     $('toastText').textContent = t(key);
     $('toast').dataset.key = key;
+    const btn = $('toastAction');
+    btn.hidden = !actionKey;
+    btn.dataset.key = actionKey || '';
+    btn.textContent = actionKey ? t(actionKey) : '';
+    btn.onclick = onAction || null;
     $('toast').hidden = false;
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { $('toast').hidden = true; }, 3500);
+    if (!actionKey) toastTimer = setTimeout(hideToast, 4000);
   }
+  function hideToast() { $('toast').hidden = true; }
+  $('toastClose').addEventListener('click', hideToast);
 
   function renderInstall() {
     $('btnInstall').hidden = !canServiceWorker || isStandalone();
-    const steps = isIOS ? ['iosStep1', 'iosStep2', 'iosStep3'] : isMacSafari ? ['macStep1', 'macStep2'] : ['otherStep1', 'otherStep2', 'otherStep3'];
+    const steps = isIOS ? ['iosStep1', 'iosStep2', 'iosStep3'] : isMacSafari ? ['macStep1', 'macStep2'] :
+      isAndroid ? ['androidStep1', 'androidStep2'] : ['otherStep1', 'otherStep2', 'otherStep3'];
     $('installSteps').innerHTML = steps.map(k => `<li>${esc(t(k))}</li>`).join('');
+    // Re-translate a visible notice when the language changes.
     if (!$('toast').hidden && $('toast').dataset.key) $('toastText').textContent = t($('toast').dataset.key);
+    if ($('toastAction').dataset.key) $('toastAction').textContent = t($('toastAction').dataset.key);
   }
 
   // Chrome, Edge and Android browsers offer a native install prompt.
@@ -984,14 +997,43 @@
   window.addEventListener('offline', () => toast('offlineNow'));
 
   if (canServiceWorker) {
+    const offerReload = () => toast('updateReady', 'reload', () => { hideToast(); location.reload(); });
+    let switching = false;
+    // A new service worker (new VERSION in sw.js) is installed and waiting:
+    // let the player choose when to switch, then reload once it takes over.
+    const offerSwitch = worker => toast('updateReady', 'reload', () => {
+      hideToast();
+      switching = true;
+      worker.postMessage('skipWaiting');
+    });
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (switching) { switching = false; location.reload(); }
+    });
+    // The service worker found newer copies of the app's files in the background.
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data && e.data.type === 'updated') offerReload();
+    });
+
     window.addEventListener('load', () => {
       const firstInstall = !navigator.serviceWorker.controller;
       navigator.serviceWorker.register('sw.js').then(reg => {
-        if (!firstInstall) return;
-        const sw = reg.installing || reg.waiting || reg.active;
-        const done = () => toast('offlineReady');
-        if (sw && sw.state === 'activated') done();
-        else if (sw) sw.addEventListener('statechange', () => { if (sw.state === 'activated') done(); });
+        if (firstInstall) {
+          const sw = reg.installing || reg.waiting || reg.active;
+          const done = () => toast('offlineReady');
+          if (sw && sw.state === 'activated') done();
+          else if (sw) sw.addEventListener('statechange', () => { if (sw.state === 'activated') done(); });
+        } else if (reg.waiting) {
+          offerSwitch(reg.waiting);
+        }
+        reg.addEventListener('updatefound', () => {
+          const worker = reg.installing;
+          if (!worker || firstInstall) return;
+          worker.addEventListener('statechange', () => {
+            if (worker.state === 'installed' && navigator.serviceWorker.controller) offerSwitch(worker);
+          });
+        });
+        // Apps left open for a long time (e.g. installed on a phone) still find updates.
+        setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
       }).catch(err => console.warn('Offline mode unavailable:', err));
     });
   }
