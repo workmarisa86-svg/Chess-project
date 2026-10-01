@@ -4,7 +4,7 @@
   const { WHITE, BLACK, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, START_FEN,
     sqName, sqParse, mFrom, mTo, mPromo, mFlags } = Core;
 
-  const GLYPH = ['', '♟', '♞', '♝', '♜', '♛', '♚'];
+  const PIECE_CODE = ['', 'P', 'N', 'B', 'R', 'Q', 'K'];
   const VS = '︎'; // force text (not emoji) presentation
   const VAL = [0, 1, 3, 3, 5, 9, 0];
   const PIECE_NAMES = {
@@ -133,7 +133,7 @@
 
   function pieceHTML(p) {
     if (!p) return '';
-    return `<span class="piece ${p & BLACK ? 'b' : 'w'}">${GLYPH[p & 7]}${VS}</span>`;
+    return `<span class="piece ${p & BLACK ? 'b' : 'w'}${PIECE_CODE[p & 7]}"></span>`;
   }
 
   function renderBoard() {
@@ -673,7 +673,7 @@
         name = color === state.humanColor ? t('you') : `${t('computer')} · ${t(LEVEL_KEY[state.level])}`;
       } else name = colorName(color);
       const caps = taken[color].slice().sort((a, b) => VAL[b & 7] - VAL[a & 7])
-        .map(p => `<span class="cap ${p & BLACK ? 'b' : 'w'}">${GLYPH[p & 7]}${VS}</span>`).join('');
+        .map(p => `<span class="piece cap ${p & BLACK ? 'b' : 'w'}${PIECE_CODE[p & 7]}"></span>`).join('');
       const adv = mat[color] - mat[color ^ BLACK];
       const active = !state.over && g.turn === color;
       return { html: `<span class="player-name"><span class="swatch ${color === WHITE ? 'w' : 'b'}"></span>${esc(name)}</span>` +
@@ -719,6 +719,7 @@
     if (!$('glossaryModal').hidden) renderGlossary();
     if (!$('statsModal').hidden) renderStats();
     renderFacts();
+    renderInstall();
   }
 
   $('langToggle').addEventListener('click', () => {
@@ -930,8 +931,89 @@
   $('glossarySearch').addEventListener('input', renderGlossary);
   $('btnGlossary').addEventListener('click', () => { renderGlossary(); openModal('glossaryModal'); });
 
+  // ---------------------------------------------------------------- install & offline
+  // A service worker stores the app for offline play. It needs http(s), so
+  // nothing happens when index.html is opened straight from disk.
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isMacSafari = !isIOS && /Macintosh/.test(ua) && /Safari\//.test(ua) && !/Chrome|Chromium|Edg|Firefox/.test(ua);
+  const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const canServiceWorker = 'serviceWorker' in navigator && /^https?:$/.test(location.protocol);
+  let installPrompt = null;
+
+  let toastTimer = null;
+  // A toast with an action (e.g. "Reload") stays until it is used.
+  function toast(key, actionKey, onAction) {
+    $('toastText').textContent = t(key);
+    $('toast').dataset.key = key;
+    const btn = $('toastAction');
+    btn.hidden = !actionKey;
+    btn.dataset.key = actionKey || '';
+    btn.textContent = actionKey ? t(actionKey) : '';
+    btn.onclick = onAction || null;
+    $('toast').hidden = false;
+    clearTimeout(toastTimer);
+    if (!actionKey) toastTimer = setTimeout(() => { $('toast').hidden = true; }, 3500);
+  }
+  let updateShown = false;
+  function offerUpdate() {
+    if (updateShown) return;
+    updateShown = true;
+    toast('updateReady', 'reload', () => location.reload());
+  }
+
+  function renderInstall() {
+    $('btnInstall').hidden = !canServiceWorker || isStandalone();
+    const steps = isIOS ? ['iosStep1', 'iosStep2', 'iosStep3'] : isMacSafari ? ['macStep1', 'macStep2'] : ['otherStep1', 'otherStep2', 'otherStep3'];
+    $('installSteps').innerHTML = steps.map(k => `<li>${esc(t(k))}</li>`).join('');
+    if (!$('toast').hidden && $('toast').dataset.key) $('toastText').textContent = t($('toast').dataset.key);
+    if ($('toastAction').dataset.key) $('toastAction').textContent = t($('toastAction').dataset.key);
+  }
+
+  // Chrome, Edge and Android browsers offer a native install prompt.
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    installPrompt = e;
+    renderInstall();
+  });
+  window.addEventListener('appinstalled', () => {
+    installPrompt = null;
+    $('btnInstall').hidden = true;
+    closeModal('installModal');
+    toast('installed');
+  });
+  $('btnInstall').addEventListener('click', async () => {
+    if (installPrompt) {
+      const p = installPrompt;
+      installPrompt = null;
+      p.prompt();
+      try { await p.userChoice; } catch (e) { /* ignore */ }
+    } else {
+      // Safari (iPhone, iPad, Mac) and others: show how to install by hand.
+      renderInstall();
+      openModal('installModal');
+    }
+  });
+  window.addEventListener('offline', () => { if (!updateShown) toast('offlineNow'); });
+
+  if (canServiceWorker) {
+    window.addEventListener('load', () => {
+      const firstInstall = !navigator.serviceWorker.controller;
+      // A published change was downloaded in the background (see sw.js),
+      // or a new service worker version took over this page.
+      navigator.serviceWorker.addEventListener('message', e => { if (e.data && e.data.type === 'updated') offerUpdate(); });
+      navigator.serviceWorker.addEventListener('controllerchange', () => { if (!firstInstall) offerUpdate(); });
+      navigator.serviceWorker.register('sw.js').then(reg => {
+        if (!firstInstall) return;
+        const sw = reg.installing || reg.waiting || reg.active;
+        const done = () => toast('offlineReady');
+        if (sw && sw.state === 'activated') done();
+        else if (sw) sw.addEventListener('statechange', () => { if (sw.state === 'activated') done(); });
+      }).catch(err => console.warn('Offline mode unavailable:', err));
+    });
+  }
+
   // ---------------------------------------------------------------- start
-  window.ChessUI = { openModal }; // used by pwa.js (install help dialog)
   buildBoard();
   Engine.init();
   applyLanguage();

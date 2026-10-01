@@ -38,23 +38,24 @@ Just open `index.html`.
   (what it is, why it's useful, an example) with a mini board showing the pattern.
 - **Glossary** button with all terms in alphabetical order.
 
-## Install it / play offline
+## Install it and play offline
 
-Chess Coach is an installable app (PWA). After you open the published site once
-(it needs `https://`, e.g. GitHub Pages), it is stored on the device and opens and plays
-**without an internet connection**, on computers and phones. A short notice says
-*"Ready to play offline"* when it's done.
+When the game is opened from a web address (such as the GitHub Pages link below), it works as an
+installable app (a PWA):
 
-- Tap **⬇ Install** in the top bar. Where the browser supports it (Chrome, Edge, Android),
-  this opens the install prompt; otherwise it shows the steps (iPhone/iPad: Share →
-  *Add to Home Screen*; Safari on Mac: File → *Add to Dock*).
-- Installed, it opens full screen from its own knight icon.
-- When a new version is published, a *"A new version is available — Reload"* notice appears.
+- **After the first visit it works with no internet connection** — the app, the computer opponent,
+  the coach and the glossary are all stored on the device.
+- **Install button** (⬇ in the top bar):
+  - *Chrome / Edge (computer or Android)*: opens the browser's install prompt.
+  - *iPhone / iPad (Safari)*: shows how to use Share → *Add to Home Screen*.
+  - *Safari on Mac*: shows how to use File → *Add to Dock*.
+- Once installed it opens in its own window with the Chess Coach icon, like any other app.
+- When you publish changes, open and installed copies download them in the background the next
+  time they're online and show **"A new version is available — Reload"**. Tapping *Reload* switches
+  to the new version. (Only bump `VERSION` in `sw.js` when you add, rename or remove files.)
 
-Opening `index.html` straight from disk still works, but offline storage needs a web server.
-
-**When you change any file**, bump `VERSION` at the top of `sw.js` (e.g. `'v1'` → `'v2'`)
-so visitors get the new files. If you add a new file, add it to the `ASSETS` list there too.
+Offline mode and installing need the game to be served from a web address; opening `index.html`
+straight from your disk still works for playing, but without those two extras.
 
 ## Files
 
@@ -67,10 +68,10 @@ js/terms.js      glossary terms, openings and opening book
 js/facts.js      "Did you know?" facts
 js/coach.js      move analysis and coach explanations
 js/app.js        board, controls and game flow
-js/pwa.js        install button, offline/update notices, service worker registration
-sw.js            service worker: caches every file for offline play
 manifest.webmanifest  app name, colors and icons for installing
-icons/           app icons (SVG, PNG and maskable versions)
+sw.js            service worker: stores the app for offline use
+icons/           app icons
+pieces/cburnett/ chess piece images (see credits below)
 ```
 
 ## Publish it with GitHub Pages
@@ -83,3 +84,11 @@ icons/           app icons (SVG, PNG and maskable versions)
    `https://<your-username>.github.io/<repository-name>/`.
 
 Every time you push changes to that branch, the site updates automatically.
+
+## Credits
+
+Chess pieces: the **cburnett** set by
+**[Colin M.L. Burnett](https://en.wikipedia.org/wiki/User:Cburnett)**, licensed under the
+**GNU GPL v2 or later** (as distributed by [Lichess](https://github.com/lichess-org/lila)).
+The two bishops were modified: the cross on the mitre is replaced by the traditional diagonal
+slit. The license text and details are in [`pieces/cburnett/`](pieces/cburnett/README.md).
