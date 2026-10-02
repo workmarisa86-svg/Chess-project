@@ -2,9 +2,9 @@
   "name": "Chess Coach",
   "short_name": "Chess Coach",
   "description": "Play chess against a friend or the computer, and learn with a coach that explains every move. English and Spanish.",
-  "id": "./",
-  "start_url": "./",
-  "scope": "./",
+  "id": "/Chess-project/",
+  "start_url": "/Chess-project/",
+  "scope": "/Chess-project/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#f3f0ea",
@@ -12,8 +12,8 @@
   "categories": ["games", "education"],
   "lang": "en",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/Chess-project/icons/chess-coach-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/Chess-project/icons/chess-coach-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/Chess-project/icons/chess-coach-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
