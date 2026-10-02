@@ -1039,7 +1039,18 @@
       if (e.data && e.data.type === 'updated') offerReload();
     });
 
-    window.addEventListener('load', () => {
+    window.addEventListener('load', async () => {
+      // Clean-up: a worker of this app registered with any other scope, and
+      // caches of earlier versions under other names. Other apps' workers
+      // (scripts outside this folder) and caches are never touched.
+      try {
+        const scope = new URL('./', location.href).href;
+        for (const r of await navigator.serviceWorker.getRegistrations()) {
+          const script = (r.active || r.waiting || r.installing || {}).scriptURL || '';
+          if (r.scope !== scope && script.startsWith(scope)) await r.unregister();
+        }
+        if (window.caches) for (const k of await caches.keys()) if (k.startsWith('chesscoach')) await caches.delete(k);
+      } catch (e) { /* ignore */ }
       const firstInstall = !navigator.serviceWorker.controller;
       // Scope './' = this app's own folder (/Chess-project/ on GitHub Pages),
       // so the worker never controls other apps on the same domain.

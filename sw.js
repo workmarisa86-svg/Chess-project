@@ -8,7 +8,7 @@
  *  - If you add, rename or remove files in FILES, bump VERSION. The new worker
  *    then waits, and the same notice lets the player switch when they like.
  */
-const VERSION = 'v7';
+const VERSION = 'v8';
 // Cache Storage is shared by every app on the same domain: this app only ever
 // creates, reads and deletes caches whose names start with 'chess-coach-'.
 const CACHE_PREFIX = 'chess-coach-';
@@ -36,11 +36,11 @@ const FILES = [
   'pieces/cburnett/bB.svg',
   'pieces/cburnett/bN.svg',
   'pieces/cburnett/bP.svg',
-  'icons/icon-192.png',
-  'icons/icon-512.png',
-  'icons/maskable-512.png',
-  'icons/apple-touch-icon.png',
-  'icons/favicon-32.png'
+  'icons/chess-coach-icon-192.png',
+  'icons/chess-coach-icon-512.png',
+  'icons/chess-coach-maskable-512.png',
+  'icons/chess-coach-apple-touch-icon.png',
+  'icons/chess-coach-favicon-32.png'
 ];
 
 self.addEventListener('install', event => {
