@@ -181,9 +181,49 @@
             <button type="button" id="btnFlip" class="btn"><span aria-hidden="true">⇅</span> <span class="lbl" data-i18n="flip">Flip</span></button>
             <button type="button" id="btnUndo" class="btn"><span aria-hidden="true">↶</span> <span class="lbl" data-i18n="undo">Undo</span></button>
             <button type="button" id="btnBest" class="btn accent" hidden><span aria-hidden="true">💡</span> <span class="lbl" data-i18n="bestMove">Best move</span></button>
+            <button type="button" id="btnHint" class="btn" hidden><span aria-hidden="true">💡</span> <span class="lbl" data-i18n="hint">Hint</span></button>
+            <button type="button" id="btnSkip" class="btn" hidden><span aria-hidden="true">⏭</span> <span class="lbl" data-i18n="skip">Skip</span></button>
+            <button type="button" id="btnNext" class="btn primary" hidden><span aria-hidden="true">→</span> <span class="lbl" data-i18n="next">Next</span></button>
+            <button type="button" id="btnEdit" class="btn" hidden><span aria-hidden="true">✎</span> <span class="lbl" data-i18n="editPosition">Edit</span></button>
           </div>
         </div>
         <aside class="game-side">
+          <div class="edit-panel" id="editPanel" hidden>
+            <div class="palette" id="palette" role="group" data-i18n-aria="pieces" aria-label="Pieces"></div>
+            <div class="edit-msg" id="editMsg" aria-live="polite"></div>
+            <div class="edit-row">
+              <button type="button" class="btn small" data-ed="clear">🗑 <span data-i18n="clearBoard">Clear</span></button>
+              <button type="button" class="btn small" data-ed="start">♙ <span data-i18n="startPosition">Start position</span></button>
+              <button type="button" class="btn small" data-ed="flip">⇅ <span data-i18n="flip">Flip</span></button>
+            </div>
+            <div class="edit-row">
+              <span class="edit-label" data-i18n="sideToMove">Side to move</span>
+              <div class="seg" id="edTurn">
+                <button type="button" data-turn="w"><span class="swatch w" aria-hidden="true"></span> <span data-i18n="white"></span></button>
+                <button type="button" data-turn="b"><span class="swatch b" aria-hidden="true"></span> <span data-i18n="black"></span></button>
+              </div>
+            </div>
+            <div class="edit-row castle-row">
+              <span class="edit-label" data-i18n="castlingRights">Castling</span>
+              <label><input type="checkbox" data-castle="K"> <span data-i18n="castleWK">White O-O</span></label>
+              <label><input type="checkbox" data-castle="Q"> <span data-i18n="castleWQ">White O-O-O</span></label>
+              <label><input type="checkbox" data-castle="k"> <span data-i18n="castleBK">Black O-O</span></label>
+              <label><input type="checkbox" data-castle="q"> <span data-i18n="castleBQ">Black O-O-O</span></label>
+            </div>
+            <div class="edit-row">
+              <input type="text" id="edText" class="text-input" autocomplete="off" autocapitalize="off" spellcheck="false" data-i18n-placeholder="piecesTextPh" placeholder="Ph7 Rc3 Kg1">
+              <button type="button" class="btn small" data-ed="text" data-i18n="addPieces">Add</button>
+            </div>
+            <p class="hint-text small" id="edTextHelp"></p>
+            <div class="edit-row">
+              <input type="text" id="edFen" class="text-input mono" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="FEN">
+            </div>
+            <div class="edit-row">
+              <button type="button" class="btn small" data-ed="copy">⧉ <span data-i18n="copyFen">Copy FEN</span></button>
+              <button type="button" class="btn small" data-ed="paste">📋 <span data-i18n="pasteFen">Paste FEN</span></button>
+            </div>
+            <button type="button" class="btn primary big" data-ed="done">🔍 <span data-i18n="analyzeThis">Analyze this position</span></button>
+          </div>
           <details class="panel" id="movesPanel" open>
             <summary><span data-i18n="moves">Moves</span></summary>
             <div id="moveList" class="move-list"></div>
@@ -222,6 +262,13 @@
       <div class="stats-reset">
         <button type="button" class="btn danger" id="btnResetStats" data-i18n="resetStats">Reset statistics</button>
       </div>
+      <div class="stats-section ch-stats">
+        <h3>🎯 <span data-i18n="challenge">Challenge</span></h3>
+        <div id="chStatsBody"></div>
+      </div>
+      <div class="stats-reset">
+        <button type="button" class="btn danger" id="btnResetCh" data-i18n="resetCh">Reset challenge statistics</button>
+      </div>
     </section>
 
     <!-- ================= Glossary ================= -->
@@ -235,10 +282,38 @@
     <!-- ================= Challenge (Stage 2) ================= -->
     <section class="screen sub-screen" id="scrChallenge" hidden>
       <div class="sub-head"><button type="button" class="btn icon back" data-back data-i18n-aria="back" aria-label="Back">‹</button><h2 data-i18n="challenge">Challenge</h2></div>
-      <div class="coming-soon">
-        <div class="ci" aria-hidden="true">🎯</div>
-        <p data-i18n="challengeSoon"></p>
+      <div class="field">
+        <div class="field-label" data-i18n="chCategory">Category</div>
+        <div class="ch-cats" id="chCats">
+          <button type="button" data-cat="o"><span class="ci" aria-hidden="true">📘</span><b data-i18n="catOpenings">Openings</b><small></small></button>
+          <button type="button" data-cat="t"><span class="ci" aria-hidden="true">⚔️</span><b data-i18n="catTactics">Tactics</b><small></small></button>
+          <button type="button" data-cat="e"><span class="ci" aria-hidden="true">🏁</span><b data-i18n="catEndgames">Endgames</b><small></small></button>
+          <button type="button" data-cat="g"><span class="ci" aria-hidden="true">🏛️</span><b data-i18n="catGames">Master games</b><small></small></button>
+        </div>
       </div>
+      <div class="field">
+        <div class="field-label" data-i18n="difficulty">Difficulty</div>
+        <div class="seg seg-5" id="chLevels">
+          <button type="button" data-l="0" data-i18n="lvlBeginner"></button>
+          <button type="button" data-l="1" data-i18n="lvlEasy"></button>
+          <button type="button" data-l="2" data-i18n="lvlMedium"></button>
+          <button type="button" data-l="3" data-i18n="lvlHard"></button>
+          <button type="button" data-l="4" data-i18n="lvlImpossible"></button>
+        </div>
+        <p class="hint-text" id="chLevelDesc"></p>
+      </div>
+      <div class="ch-progress" id="chProgress">
+        <div class="ch-progress-text" id="chProgressText"></div>
+        <div class="bar" aria-hidden="true"><span id="chProgressBar"></span></div>
+      </div>
+      <label class="switch-row"><span data-i18n="chTimer">Show a timer</span>
+        <input type="checkbox" id="chTimer"><span class="switch" aria-hidden="true"></span></label>
+      <button type="button" class="btn primary big" id="btnChStart" data-i18n="chStart">Start</button>
+      <p class="hint-text" id="chLoading" hidden data-i18n="loading">Loading…</p>
+      <button type="button" class="choice analysis-link" id="btnAnalysis">
+        <span class="ci" aria-hidden="true">🔍</span>
+        <span class="ct"><b data-i18n="analysisBoard">Analysis board</b><small data-i18n="analysisDesc"></small></span>
+      </button>
     </section>
   </main>
 

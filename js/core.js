@@ -838,7 +838,7 @@ function ChessCore() {
         g.undo();
         if (r) threat = { move: r.move, score: r.score, pv: r.pv };
       }
-      return { results, threat };
+      return { results, threat, depth: results.depth || 0 };
     }
     // Score for the side to move (used when the robot considers a draw offer).
     if (msg.type === 'eval') {

@@ -8,7 +8,7 @@
  *  - If you add, rename or remove files in FILES, bump VERSION. The new worker
  *    then waits, and the same notice lets the player switch when they like.
  */
-const VERSION = 'v9';
+const VERSION = 'v10';
 // Cache Storage is shared by every app on the same domain: this app only ever
 // creates, reads and deletes caches whose names start with 'chess-coach-'.
 const CACHE_PREFIX = 'chess-coach-';
@@ -25,6 +25,7 @@ const FILES = [
   'js/coach.js',
   'js/sound.js',
   'js/app.js',
+  'data/challenges.js', // puzzles: loaded by the page only when Challenge opens, cached here for offline use
   'pieces/cburnett/wK.svg',
   'pieces/cburnett/wQ.svg',
   'pieces/cburnett/wR.svg',
