@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="description" content="Play chess against a friend or the computer, and learn with a coach that explains every move. English and Spanish.">
+  <meta name="description" content="Play chess against a friend or the robot, learn with a coach, and study the glossary. English and Spanish.">
   <meta name="theme-color" content="#2f6f57">
   <title>Chess Coach</title>
   <link rel="manifest" href="manifest.webmanifest">
@@ -14,23 +14,31 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Chess Coach">
+  <script>
+    // Apply the saved theme and board colours before the first paint (no flash).
+    (function () {
+      var s = {};
+      try { s = JSON.parse(localStorage.getItem('chess-coach.settings')) || {}; } catch (e) { /* defaults */ }
+      var theme = s.theme === 'light' || s.theme === 'dark' ? s.theme :
+        (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.dataset.theme = theme;
+      document.documentElement.dataset.board = s.boardTheme || 'brown';
+    })();
+  </script>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">
+    <button type="button" class="brand" id="brandHome" data-i18n-aria="mainMenu" aria-label="Main menu">
       <span class="logo" aria-hidden="true"><img src="pieces/cburnett/wN.svg" alt=""></span>
-      <h1 data-i18n="appTitle">Chess Coach</h1>
-    </div>
+      <span class="brand-name" data-i18n="appTitle">Chess Coach</span>
+    </button>
     <div class="top-actions">
       <button type="button" id="btnInstall" class="btn ghost install-btn" hidden>
-        <span aria-hidden="true">⬇</span> <span data-i18n="install">Install</span>
+        <span aria-hidden="true">⬇</span> <span class="lbl" data-i18n="install">Install</span>
       </button>
-      <button type="button" id="btnStats" class="btn ghost">
-        <span aria-hidden="true">📊</span> <span data-i18n="statistics">Statistics</span>
-      </button>
-      <button type="button" id="btnGlossary" class="btn ghost">
-        <span aria-hidden="true">📖</span> <span data-i18n="glossary">Glossary</span>
+      <button type="button" id="themeToggle" class="btn ghost icon theme-toggle" data-i18n-aria="themeToggle" aria-label="Light / dark">
+        <span class="sun" aria-hidden="true">☀</span><span class="moon" aria-hidden="true">☾</span>
       </button>
       <button type="button" id="langToggle" class="lang-switch" role="switch" aria-checked="false" data-i18n-aria="langLabel" aria-label="Language">
         <span class="lang-opt" data-lang="en">EN</span>
@@ -40,32 +48,36 @@
     </div>
   </header>
 
-  <main class="layout">
-    <section class="board-col">
-      <div class="player-bar" id="barTop"></div>
-      <div class="board-wrap" id="boardWrap">
-        <div id="board" class="board" aria-label="Chessboard"></div>
-        <svg id="arrows" class="arrows" viewBox="0 0 800 800" aria-hidden="true"></svg>
+  <main id="screens">
+    <!-- ================= Main menu ================= -->
+    <section class="screen menu-screen" id="scrMenu">
+      <div class="menu-hero">
+        <img class="menu-logo" src="pieces/cburnett/wN.svg" alt="">
+        <h1 data-i18n="appTitle">Chess Coach</h1>
+        <p class="menu-sub" data-i18n="menuSubtitle"></p>
       </div>
-      <div class="player-bar" id="barBottom"></div>
-      <div class="controls">
-        <button type="button" id="btnNew" class="btn primary" data-i18n="newGame">New Game</button>
-        <button type="button" id="btnUndo" class="btn" data-i18n="undo" data-i18n-title="undoTitle">Undo Move</button>
-        <button type="button" id="btnFlip" class="btn icon" data-i18n-title="flip" data-i18n-aria="flip" aria-label="Flip board">⇅</button>
-      </div>
-    </section>
-
-    <aside class="side-col">
-      <div class="card status-card">
-        <div class="status-row">
-          <span id="turnDot" class="turn-dot" aria-hidden="true"></span>
-          <div id="status" class="status" aria-live="polite"></div>
-        </div>
-        <div id="modeInfo" class="mode-info"></div>
-      </div>
-
-      <div class="card fact-wrap" id="endFact" hidden>
-        <div class="fact-card">
+      <nav class="menu-buttons">
+        <button type="button" class="menu-btn resume" id="btnResume" data-go="resume" hidden>
+          <span class="mi" aria-hidden="true">▶</span>
+          <span class="mt"><span data-i18n="resumeGame">Resume game</span><small id="resumeInfo"></small></span>
+        </button>
+        <button type="button" class="menu-btn primary" data-go="play">
+          <span class="mi" aria-hidden="true">♟</span><span class="mt" data-i18n="play">Play</span>
+        </button>
+        <button type="button" class="menu-btn" data-go="challenge">
+          <span class="mi" aria-hidden="true">🎯</span><span class="mt" data-i18n="challenge">Challenge</span>
+        </button>
+        <button type="button" class="menu-btn" data-go="settings">
+          <span class="mi" aria-hidden="true">⚙</span><span class="mt" data-i18n="settings">Settings</span>
+        </button>
+        <button type="button" class="menu-btn" data-go="stats">
+          <span class="mi" aria-hidden="true">📊</span><span class="mt" data-i18n="statistics">Statistics</span>
+        </button>
+        <button type="button" class="menu-btn" data-go="glossary">
+          <span class="mi" aria-hidden="true">📖</span><span class="mt" data-i18n="glossary">Glossary</span>
+        </button>
+      </nav>
+      <div class="fact-card">
         <div class="fact-icon" aria-hidden="true">💡</div>
         <div class="fact-body">
           <div class="fact-title" data-i18n="didYouKnow">Did you know?</div>
@@ -73,48 +85,55 @@
           <button type="button" class="btn small" data-next-fact data-i18n="nextFact">Next fact</button>
         </div>
       </div>
-      </div>
+      <footer class="credits">
+        <span data-i18n="piecesCredit">Chess pieces:</span> “cburnett” —
+        <a href="https://en.wikipedia.org/wiki/User:Cburnett" rel="noopener">Colin M.L. Burnett</a>,
+        <a href="pieces/cburnett/README.md">GPLv2+</a>
+      </footer>
+    </section>
 
-      <div class="card coach-card" id="coachCard" hidden>
-        <h2><span aria-hidden="true">🎓</span> <span data-i18n="coach">Coach</span></h2>
-        <div id="coachLog" class="coach-log" aria-live="polite"></div>
+    <!-- ================= Play: friend or robot ================= -->
+    <section class="screen sub-screen" id="scrPlay" hidden>
+      <div class="sub-head"><button type="button" class="btn icon back" data-back data-i18n-aria="back" aria-label="Back">‹</button><h2 data-i18n="play">Play</h2></div>
+      <div class="choice-list">
+        <button type="button" class="choice" data-go="friend">
+          <span class="ci" aria-hidden="true">👥</span>
+          <span class="ct"><b data-i18n="vsFriend">Vs Friend</b><small data-i18n="vsFriendDesc"></small></span>
+        </button>
+        <button type="button" class="choice" data-go="robot">
+          <span class="ci" aria-hidden="true">🤖</span>
+          <span class="ct"><b data-i18n="vsRobot">Vs Robot</b><small data-i18n="vsRobotDesc"></small></span>
+        </button>
       </div>
+    </section>
 
-      <div class="card moves-card">
-        <h2 data-i18n="moves">Moves</h2>
-        <div id="moveList" class="move-list"></div>
+    <!-- ================= Robot: coach or alone ================= -->
+    <section class="screen sub-screen" id="scrRobot" hidden>
+      <div class="sub-head"><button type="button" class="btn icon back" data-back data-i18n-aria="back" aria-label="Back">‹</button><h2 data-i18n="vsRobot">Vs Robot</h2></div>
+      <div class="choice-list">
+        <button type="button" class="choice" data-go="setup-learn">
+          <span class="ci" aria-hidden="true">🎓</span>
+          <span class="ct"><b data-i18n="coachMode">Coach</b><small data-i18n="coachModeDesc"></small></span>
+        </button>
+        <button type="button" class="choice" data-go="setup-cpu">
+          <span class="ci" aria-hidden="true">🤖</span>
+          <span class="ct"><b data-i18n="aloneMode">Alone</b><small data-i18n="aloneModeDesc"></small></span>
+        </button>
       </div>
-    </aside>
-  </main>
+    </section>
 
-  <!-- New game dialog -->
-  <div class="modal" id="newGameModal" hidden>
-    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="newGameTitle">
-      <div class="modal-head">
-        <h2 id="newGameTitle" data-i18n="gameSetup">New game</h2>
-        <button type="button" class="btn icon close" data-close data-i18n-aria="close" aria-label="Close">✕</button>
-      </div>
+    <!-- ================= Robot setup ================= -->
+    <section class="screen sub-screen" id="scrSetup" hidden>
+      <div class="sub-head"><button type="button" class="btn icon back" data-back data-i18n-aria="back" aria-label="Back">‹</button><h2 id="setupTitle"></h2></div>
       <div class="field">
-        <div class="field-label" data-i18n="mode">Mode</div>
-        <div class="mode-options" id="modeOptions">
-          <button type="button" class="mode-card" data-mode="pvp">
-            <span class="mode-icon" aria-hidden="true">👥</span>
-            <span class="mode-title" data-i18n="modePvp"></span>
-            <span class="mode-desc" data-i18n="modePvpDesc"></span>
-          </button>
-          <button type="button" class="mode-card" data-mode="cpu">
-            <span class="mode-icon" aria-hidden="true">🤖</span>
-            <span class="mode-title" data-i18n="modeCpu"></span>
-            <span class="mode-desc" data-i18n="modeCpuDesc"></span>
-          </button>
-          <button type="button" class="mode-card" data-mode="learn">
-            <span class="mode-icon" aria-hidden="true">🎓</span>
-            <span class="mode-title" data-i18n="modeLearn"></span>
-            <span class="mode-desc" data-i18n="modeLearnDesc"></span>
-          </button>
+        <div class="field-label" data-i18n="playAs">Play as</div>
+        <div class="seg" id="colorOptions">
+          <button type="button" data-color="w"><span class="swatch w" aria-hidden="true"></span> <span data-i18n="white"></span></button>
+          <button type="button" data-color="b"><span class="swatch b" aria-hidden="true"></span> <span data-i18n="black"></span></button>
+          <button type="button" data-color="r"><span class="swatch r" aria-hidden="true"></span> <span data-i18n="random"></span></button>
         </div>
       </div>
-      <div class="field" id="levelField">
+      <div class="field">
         <div class="field-label" data-i18n="difficulty">Difficulty</div>
         <div class="seg seg-5" id="levelOptions">
           <button type="button" data-level="beginner" data-i18n="lvlBeginner"></button>
@@ -125,49 +144,71 @@
         </div>
         <p class="hint-text" id="levelDesc"></p>
       </div>
-      <div class="field" id="colorField">
-        <div class="field-label" data-i18n="playAs">Play as</div>
-        <div class="seg" id="colorOptions">
-          <button type="button" data-color="w"><span class="swatch w" aria-hidden="true"></span> <span data-i18n="white"></span></button>
-          <button type="button" data-color="b"><span class="swatch b" aria-hidden="true"></span> <span data-i18n="black"></span></button>
-          <button type="button" data-color="r"><span class="swatch r" aria-hidden="true"></span> <span data-i18n="random"></span></button>
+      <p class="hint-text" id="setupClockNote"></p>
+      <button type="button" class="btn primary big" id="btnStart" data-i18n="start">Start game</button>
+    </section>
+
+    <!-- ================= Board ================= -->
+    <section class="screen game-screen" id="scrGame" hidden>
+      <div class="game-top">
+        <div class="status-row">
+          <span id="turnDot" class="turn-dot" aria-hidden="true"></span>
+          <div id="status" class="status" aria-live="polite"></div>
+        </div>
+        <div class="game-top-actions">
+          <div class="more-wrap">
+            <button type="button" class="btn icon" id="btnMore" aria-haspopup="menu" aria-expanded="false" data-i18n-aria="moreActions" aria-label="More">⋯</button>
+            <div class="more-menu" id="moreMenu" role="menu" hidden>
+              <button type="button" role="menuitem" data-act="new"><span aria-hidden="true">＋</span> <span data-i18n="newGame">New game</span></button>
+              <button type="button" role="menuitem" data-act="draw"><span aria-hidden="true">½</span> <span data-i18n="offerDraw">Offer draw</span></button>
+              <button type="button" role="menuitem" data-act="resign"><span aria-hidden="true">⚑</span> <span data-i18n="resign">Resign</span></button>
+            </div>
+          </div>
+          <button type="button" class="btn icon chevron" id="btnLeave" data-i18n-aria="mainMenu" aria-label="Main menu">⌄</button>
         </div>
       </div>
-      <div class="fact-card">
-        <div class="fact-icon" aria-hidden="true">💡</div>
-        <div class="fact-body">
-          <div class="fact-title" data-i18n="didYouKnow">Did you know?</div>
-          <p class="fact-text"></p>
-          <button type="button" class="btn small" data-next-fact data-i18n="nextFact">Next fact</button>
+
+      <div class="game-main">
+        <div class="board-col">
+          <div class="player-bar" id="barTop"></div>
+          <div class="board-wrap" id="boardWrap">
+            <div id="board" class="board" aria-label="Chessboard"></div>
+            <svg id="arrows" class="arrows" viewBox="0 0 800 800" aria-hidden="true"></svg>
+          </div>
+          <div class="player-bar" id="barBottom"></div>
+          <div class="coach-strip" id="coachStrip" aria-live="polite" hidden></div>
+          <div class="controls">
+            <button type="button" id="btnFlip" class="btn"><span aria-hidden="true">⇅</span> <span class="lbl" data-i18n="flip">Flip</span></button>
+            <button type="button" id="btnUndo" class="btn"><span aria-hidden="true">↶</span> <span class="lbl" data-i18n="undo">Undo</span></button>
+            <button type="button" id="btnBest" class="btn accent" hidden><span aria-hidden="true">💡</span> <span class="lbl" data-i18n="bestMove">Best move</span></button>
+          </div>
         </div>
+        <aside class="game-side">
+          <details class="panel" id="movesPanel" open>
+            <summary><span data-i18n="moves">Moves</span></summary>
+            <div id="moveList" class="move-list"></div>
+          </details>
+          <div class="fact-card" id="endFact" hidden>
+            <div class="fact-icon" aria-hidden="true">💡</div>
+            <div class="fact-body">
+              <div class="fact-title" data-i18n="didYouKnow">Did you know?</div>
+              <p class="fact-text"></p>
+              <button type="button" class="btn small" data-next-fact data-i18n="nextFact">Next fact</button>
+            </div>
+          </div>
+        </aside>
       </div>
-      <div class="modal-actions">
-        <button type="button" class="btn" data-close data-i18n="cancel">Cancel</button>
-        <button type="button" class="btn primary" id="btnStart" data-i18n="start">Start game</button>
-      </div>
-    </div>
-  </div>
+    </section>
 
-  <!-- Glossary -->
-  <div class="modal" id="glossaryModal" hidden>
-    <div class="modal-box wide" role="dialog" aria-modal="true" aria-labelledby="glossaryTitle">
-      <div class="modal-head">
-        <h2 id="glossaryTitle"><span aria-hidden="true">📖</span> <span data-i18n="glossary">Glossary</span></h2>
-        <button type="button" class="btn icon close" data-close data-i18n-aria="close" aria-label="Close">✕</button>
-      </div>
-      <p class="hint-text" data-i18n="glossaryIntro"></p>
-      <input type="search" id="glossarySearch" class="search" data-i18n-placeholder="searchTerms" autocomplete="off">
-      <div id="glossaryList" class="glossary-list"></div>
-    </div>
-  </div>
+    <!-- ================= Settings ================= -->
+    <section class="screen sub-screen wide" id="scrSettings" hidden>
+      <div class="sub-head"><button type="button" class="btn icon back" data-back data-i18n-aria="back" aria-label="Back">‹</button><h2 data-i18n="settings">Settings</h2></div>
+      <div id="settingsBody" class="settings"></div>
+    </section>
 
-  <!-- Statistics -->
-  <div class="modal" id="statsModal" hidden>
-    <div class="modal-box wide" role="dialog" aria-modal="true" aria-labelledby="statsTitle">
-      <div class="modal-head">
-        <h2 id="statsTitle"><span aria-hidden="true">📊</span> <span data-i18n="statistics">Statistics</span></h2>
-        <button type="button" class="btn icon close" data-close data-i18n-aria="close" aria-label="Close">✕</button>
-      </div>
+    <!-- ================= Statistics ================= -->
+    <section class="screen sub-screen wide" id="scrStats" hidden>
+      <div class="sub-head"><button type="button" class="btn icon back" data-back data-i18n-aria="back" aria-label="Back">‹</button><h2 data-i18n="statistics">Statistics</h2></div>
       <p class="hint-text" data-i18n="statsIntro"></p>
       <div class="field">
         <div class="field-label" data-i18n="showColor">Show games played as</div>
@@ -178,17 +219,35 @@
         </div>
       </div>
       <div id="statsBody"></div>
-      <div class="stats-reset" id="statsReset">
+      <div class="stats-reset">
         <button type="button" class="btn danger" id="btnResetStats" data-i18n="resetStats">Reset statistics</button>
-        <div class="confirm-bar" id="resetConfirm" hidden>
-          <span data-i18n="resetConfirm"></span>
-          <div class="confirm-actions">
-            <button type="button" class="btn small" id="btnResetNo" data-i18n="cancel"></button>
-            <button type="button" class="btn small danger" id="btnResetYes" data-i18n="resetYes"></button>
-          </div>
-        </div>
-        <p class="hint-text" id="resetDone" hidden data-i18n="resetDone"></p>
       </div>
+    </section>
+
+    <!-- ================= Glossary ================= -->
+    <section class="screen sub-screen wide" id="scrGlossary" hidden>
+      <div class="sub-head"><button type="button" class="btn icon back" data-back data-i18n-aria="back" aria-label="Back">‹</button><h2 data-i18n="glossary">Glossary</h2></div>
+      <p class="hint-text" data-i18n="glossaryIntro"></p>
+      <input type="search" id="glossarySearch" class="search" data-i18n-placeholder="searchTerms" autocomplete="off">
+      <div id="glossaryList" class="glossary-list"></div>
+    </section>
+
+    <!-- ================= Challenge (Stage 2) ================= -->
+    <section class="screen sub-screen" id="scrChallenge" hidden>
+      <div class="sub-head"><button type="button" class="btn icon back" data-back data-i18n-aria="back" aria-label="Back">‹</button><h2 data-i18n="challenge">Challenge</h2></div>
+      <div class="coming-soon">
+        <div class="ci" aria-hidden="true">🎯</div>
+        <p data-i18n="challengeSoon"></p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Generic confirm / choice dialog -->
+  <div class="modal" id="askModal" hidden>
+    <div class="modal-box small-text" role="dialog" aria-modal="true" aria-labelledby="askTitle">
+      <h3 id="askTitle"></h3>
+      <p id="askText" class="hint-text"></p>
+      <div class="ask-actions" id="askActions"></div>
     </div>
   </div>
 
@@ -208,12 +267,6 @@
     </div>
   </div>
 
-  <div class="toast" id="toast" role="status" aria-live="polite" hidden>
-    <span id="toastText"></span>
-    <button type="button" class="btn small primary" id="toastAction" hidden></button>
-    <button type="button" class="btn small icon toast-close" id="toastClose" data-i18n-aria="close" aria-label="Close">✕</button>
-  </div>
-
   <!-- Promotion -->
   <div class="modal" id="promoModal" hidden>
     <div class="modal-box small" role="dialog" aria-modal="true" aria-labelledby="promoTitle">
@@ -222,16 +275,18 @@
     </div>
   </div>
 
-  <footer class="credits">
-    Chess pieces: “cburnett” set by <a href="https://en.wikipedia.org/wiki/User:Cburnett" rel="noopener">Colin M.L. Burnett</a>,
-    <a href="pieces/cburnett/README.md">GPLv2+</a> (bishops modified).
-  </footer>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden>
+    <span id="toastText"></span>
+    <button type="button" class="btn small primary" id="toastAction" hidden></button>
+    <button type="button" class="btn small icon toast-close" id="toastClose" data-i18n-aria="close" aria-label="Close">✕</button>
+  </div>
 
   <script src="js/core.js"></script>
   <script src="js/i18n.js"></script>
   <script src="js/terms.js"></script>
   <script src="js/facts.js"></script>
   <script src="js/coach.js"></script>
+  <script src="js/sound.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

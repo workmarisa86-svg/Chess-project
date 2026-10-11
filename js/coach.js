@@ -460,101 +460,6 @@ const Coach = (() => {
   };
 
   // ---------- building coach entries ----------
-  function analyzeUserMove(g, m, results, plyIndex, sans) {
-    const legal = g.moves();
-    const best = results[0];
-    const mine = results.find(r => r.move === m) || { move: m, score: best ? best.score : 0, pv: [m] };
-    const isBest = !best || best.move === m || Math.abs(best.score - mine.score) <= 5;
-    const d = best ? Math.max(0, winPct(best.score) - winPct(mine.score)) : 0;
-    let tactics = detectTactics(g, m, mine.pv);
-    const sac = tactics.some(t => t.id === 'sacrifice');
-    const hasMajor = tactics.some(t => MAJOR.has(t.id));
-    const second = results.find(r => r.move !== (best && best.move));
-    const onlyMove = isBest && second && winPct(best.score) - winPct(second.score) >= 12 && winPct(best.score) > 35;
-
-    let rating;
-    if (isBest || d < 1.5) {
-      if (sac && winPct(mine.score) >= 45 && d < 1.5) rating = 'brilliant';
-      else if (onlyMove || (hasMajor && d < 1.5)) rating = 'great';
-      else rating = 'good';
-    } else if (d < 4) rating = 'good';
-    else if (d < 10) rating = 'inaccuracy';
-    else if (d < 20) rating = 'mistake';
-    else rating = 'blunder';
-    // Allowing a forced mate is always a blunder; missing one is at least an inaccuracy.
-    if (best && mine.score < -MATE + 500 && best.score > -MATE + 500) rating = 'blunder';
-    if (rating === 'good' && !isBest && best.score > MATE - 500 && mine.score < MATE - 500) rating = 'inaccuracy';
-
-    const goodish = rating === 'brilliant' || rating === 'great' || rating === 'good';
-    if (!goodish) tactics = tactics.filter(t => t.id !== 'sacrifice' && t.id !== 'decoy' && t.id !== 'deflection');
-    const entry = {
-      kind: 'user', move: moveInfo(g, m, legal), rating, isBest, onlyMove,
-      tactics: pickTactics(tactics, 2),
-      principles: detectPrinciples(g, m, plyIndex).slice(0, 2),
-      opening: newOpening(sans),
-      bestMove: null, better: null, refutation: null
-    };
-
-    if (best && !isBest && d >= 2.5) {
-      const bt = detectTactics(g, best.move, best.pv).filter(t => MAJOR.has(t.id) || t.id === 'hangingPiece');
-      entry.better = {
-        move: moveInfo(g, best.move, legal),
-        tactic: bt.length ? bt[0] : null,
-        gain: lineGain(g, best.pv, best.score),
-        mild: rating === 'good'
-      };
-      entry.bestMove = { from: entry.better.move.from, to: entry.better.move.to };
-    }
-
-    if ((rating === 'mistake' || rating === 'blunder') && mine.pv.length > 1) {
-      g.make(m);
-      const reply = mine.pv[1];
-      const rLegal = g.moves();
-      if (rLegal.includes(reply)) {
-        const rt = detectTactics(g, reply, mine.pv.slice(1)).filter(t => MAJOR.has(t.id));
-        let hanging = null;
-        if (mFlags(reply) & F_CAPTURE && !(mFlags(reply) & F_EP) && isHanging(g, mTo(reply))) {
-          hanging = { t: g.board[mTo(reply)] & 7, sq: sqName(mTo(reply)) };
-        }
-        let gain = null;
-        if (mine.score < -MATE + 500) {
-          gain = { kind: 'mate', n: Math.max(1, Math.ceil((MATE + mine.score - 1) / 2)) };
-        } else gain = lineGain(g, mine.pv.slice(1), -mine.score);
-        entry.refutation = { move: moveInfo(g, reply, rLegal), tactic: rt[0] || null, gain, hanging };
-      }
-      g.undo();
-    }
-    return entry;
-  }
-
-  function analyzeComputerMove(g, m, plyIndex, sans) {
-    const legal = g.moves();
-    const entry = {
-      kind: 'cpu', move: moveInfo(g, m, legal),
-      tactics: pickTactics(detectTactics(g, m, null), 2),
-      principles: detectPrinciples(g, m, plyIndex).slice(0, 2),
-      opening: newOpening(sans),
-      dangers: []
-    };
-    g.make(m);
-    const human = g.turn;
-    if (g.moves().length) {
-      const list = [];
-      for (let sq = 0; sq < 128; sq++) {
-        if (sq & 0x88) { sq += 7; continue; }
-        const p = g.board[sq];
-        if (p && (p & BLACK) === human && (p & 7) !== PAWN && isHanging(g, sq)) {
-          list.push({ t: p & 7, sq: sqName(sq), undefended: !g.attackers(sq, human).length });
-        }
-      }
-      list.sort((a, b) => VAL[b.t] - VAL[a.t]);
-      entry.dangers = list.slice(0, 2);
-    }
-    g.undo();
-    return entry;
-  }
-
-  // ---------- text ----------
   const PIECES = {
     en: ['', 'pawn', 'knight', 'bishop', 'rook', 'queen', 'king'],
     es: ['', 'peón', 'caballo', 'alfil', 'torre', 'dama', 'rey']
@@ -774,96 +679,6 @@ const Coach = (() => {
   }
 
   const MATES = new Set(['checkmate', 'smotheredMate', 'backRankMate']);
-  const RATING_SYMBOL = { brilliant: '!!', great: '!', good: '✓', inaccuracy: '?!', mistake: '?', blunder: '??' };
-  const RATING_TEXT = {
-    en: {
-      brilliant: () => 'You found a sacrifice that really works!',
-      great: e => e.onlyMove ? 'It was the only really good move here!' : 'You found the strongest continuation!',
-      good: e => e.isBest ? 'That’s exactly what a strong player would play.' : 'It keeps your position healthy.',
-      inaccuracy: () => 'Not bad, but there was something more precise.',
-      mistake: () => 'This move makes your position noticeably worse.',
-      blunder: () => 'Oops! This gives your opponent a big chance.'
-    },
-    es: {
-      brilliant: () => '¡Encontraste un sacrificio que funciona de verdad!',
-      great: e => e.onlyMove ? '¡Era la única jugada realmente buena aquí!' : '¡Encontraste la continuación más fuerte!',
-      good: e => e.isBest ? 'Es exactamente lo que jugaría un jugador fuerte.' : 'Mantiene tu posición sana.',
-      inaccuracy: () => 'No está mal, pero había algo más preciso.',
-      mistake: () => 'Esta jugada empeora claramente tu posición.',
-      blunder: () => '¡Uy! Esto le da una gran oportunidad a tu rival.'
-    }
-  };
-
-  // Returns an array of paragraphs (strings with [[term]] tokens).
-  function paragraphs(entry, lang) {
-    const out = [];
-    const es = lang === 'es';
-    if (entry.kind === 'user') {
-      out.push(`${es ? 'Jugaste' : 'You played'} ${moveText(entry.move, lang)}.`);
-      out.push(`<span class="badge b-${entry.rating}">${RATING_SYMBOL[entry.rating]} [[C:${entry.rating}]]</span> ${RATING_TEXT[lang][entry.rating](entry)}`);
-      const praise = ['brilliant', 'great', 'good'].includes(entry.rating);
-      entry.tactics.forEach((t, i) => {
-        let s = tacticText(t, lang, true);
-        if (s && i === 0 && praise && MAJOR.has(t.id) && !/^\[\[C:|^¡/.test(s)) s = (es ? '¡Bien! ' : 'Nice! ') + s;
-        if (s) out.push(s);
-      });
-      entry.principles.forEach(p => { const s = principleText(p, lang, true); if (s) out.push(s); });
-      if (entry.opening) out.push(es ? `Apertura: estamos en [[the:${entry.opening}]].` : `Opening: this is [[the:${entry.opening}]].`);
-      if (entry.better) {
-        const b = entry.better, mv = moveText(b.move, lang), gain = gainText(b.gain, lang, true, true);
-        const id = b.tactic ? b.tactic.id : null;
-        const lead = es ? (b.mild ? 'Aun así,' : 'Pero') : (b.mild ? 'Still,' : 'But');
-        let s;
-        if (es) {
-          if (!id) s = `${b.mild ? 'Aún mejor era' : 'Era más fuerte'} ${mv}${gain}.`;
-          else if (id === 'mateThreat') s = `${lead} ${mv} habría amenazado [[checkmate]]${gain}.`;
-          else if (id === 'backRankThreat') s = `${lead} ${mv} habría amenazado [[a:backRankMate]]${gain}.`;
-          else if (id === 'hangingPiece') s = `${lead} podías capturar [[a:hangingPiece]] con ${mv}${gain}.`;
-          else if (MATES.has(id)) s = `${lead} tenías [[a:${id}]] con ${mv}.`;
-          else s = `${lead} tenías [[a:${termOf(id)}]] con ${mv}${gain}.`;
-        } else {
-          if (!id) s = `${b.mild ? 'Even stronger was' : 'A stronger move was'} ${mv}${gain}.`;
-          else if (id === 'mateThreat') s = `${lead} ${mv} would have threatened [[checkmate]]${gain}.`;
-          else if (id === 'backRankThreat') s = `${lead} ${mv} would have threatened [[a:backRankMate]]${gain}.`;
-          else if (id === 'hangingPiece') s = `${lead} you could have captured [[a:hangingPiece]] with ${mv}${gain}.`;
-          else if (MATES.has(id)) s = `${lead} you had [[a:${id}]] with ${mv}!`;
-          else s = `${lead} you had [[a:${termOf(id)}]] available with ${mv}${gain}.`;
-        }
-        out.push(s);
-      }
-      if (entry.refutation) {
-        const r = entry.refutation;
-        if (r.hanging) {
-          out.push(es ? `Tu ${PIECES.es[r.hanging.t]} en ${r.hanging.sq} quedó sin defensa suficiente: es [[a:hangingPiece]].`
-            : `Your ${PIECES.en[r.hanging.t]} on ${r.hanging.sq} isn’t properly defended — it’s [[a:hangingPiece]].`);
-        }
-        let tac = '';
-        if (r.tactic) {
-          const id = r.tactic.id;
-          if (id === 'mateThreat') tac = es ? ' (amenazando [[checkmate]])' : ' (threatening [[checkmate]])';
-          else if (id === 'backRankThreat') tac = es ? ' (amenazando [[a:backRankMate]])' : ' (threatening [[a:backRankMate]])';
-          else tac = ` ([[a:${termOf(id)}]])`;
-        }
-        const gain = gainText(r.gain, lang, false, false);
-        out.push(es ? `El problema: ahora el rival puede jugar ${moveText(r.move, lang)}${tac}${gain}.`
-          : `The problem: now they can play ${moveText(r.move, lang)}${tac}${gain}.`);
-      }
-    } else {
-      out.push(`${es ? 'La computadora jugó' : 'The computer played'} ${moveText(entry.move, lang)}.`);
-      let said = 0;
-      entry.tactics.forEach(t => { const s = tacticText(t, lang, false); if (s) { out.push(s); said++; } });
-      entry.principles.forEach(p => { const s = principleText(p, lang, false); if (s) { out.push(s); said++; } });
-      if (entry.opening) out.push(es ? `Apertura: estamos en [[the:${entry.opening}]].` : `Opening: this is [[the:${entry.opening}]].`);
-      entry.dangers.forEach(d => {
-        const g = FEM[d.t] ? 'a' : 'o';
-        out.push(es ? `Cuidado: tu ${PIECES.es[d.t]} en ${d.sq} está atacad${g}${d.undefended ? ' y sin defensa' : ''}. Podría convertirse en [[a:hangingPiece]].`
-          : `Watch out: your ${PIECES.en[d.t]} on ${d.sq} is under attack${d.undefended ? ' and undefended' : ''}. It could become [[a:hangingPiece]].`);
-        said++;
-      });
-      if (!said && !entry.opening) out.push(es ? 'Una jugada tranquila para mejorar su posición.' : 'A quiet move to improve their position.');
-    }
-    return out;
-  }
 
   // Tactic ids used only internally map to glossary terms.
   function termOf(id) {
@@ -873,12 +688,131 @@ const Coach = (() => {
     return id;
   }
 
-  // Squares to highlight for "show me" on a tactic.
-  function arrowsFor(entry) {
-    const a = [];
-    if (entry.bestMove) a.push([entry.bestMove.from, entry.bestMove.to]);
-    return a;
+  // ---------- simple coach: rate a move ----------
+  // Labels: great (best or equally strong), accurate (nearly best),
+  // good (small or moderate loss), blunder (clear, significant mistake).
+  function rateMove(results, m) {
+    const best = results[0];
+    if (!best) return { label: 'good', d: 0 };
+    const mine = results.find(r => r.move === m) || best;
+    const d = Math.max(0, winPct(best.score) - winPct(mine.score));
+    let label;
+    if (mine.move === best.move || Math.abs(best.score - mine.score) <= 10 || d < 1.5) label = 'great';
+    else if (d < 4) label = 'accurate';
+    else if (d < 15) label = 'good';
+    else label = 'blunder';
+    // Allowing a forced mate the best move avoided is always a blunder.
+    if (mine.score < -MATE + 500 && best.score > -MATE + 500) label = 'blunder';
+    return { label, d };
   }
 
-  return { analyzeUserMove, analyzeComputerMove, paragraphs, openingAt, arrowsFor, winPct, termOf };
+  // ---------- simple coach: explain the best move ----------
+  // Everything said here comes from the analysis: the best line, the scores of
+  // the alternatives and the opponent's threat. Nothing is made up.
+  const TENSE = {
+    en: [[/^Nice! /, ''], [/^That was /, "It's "], [/^That's /, "It's "], [/you uncovered/, 'you uncover'],
+      [/you captured/g, 'you capture'], [/You offered/, 'You offer'], [/^Clever /, ''], [/^A real /, 'A real ']],
+    es: [[/^¡Bien! /, ''], [/^Eso fue /, 'Es '], [/^Eso es /, 'Es '], [/destapaste/, 'destapas'],
+      [/capturaste/g, 'capturas'], [/Ofreciste/, 'Ofreces'], [/^¡Buena /, '¡']]
+  };
+  function present(text, lang) {
+    for (const [re, to] of TENSE[lang]) text = text.replace(re, to);
+    return text;
+  }
+
+  function gainSentence(gain, lang) {
+    const es = lang === 'es';
+    switch (gain.kind) {
+      case 'queen': return es ? 'Gana la dama rival.' : 'It wins their queen.';
+      case 'rook': return es ? 'Gana una torre.' : 'It wins a rook.';
+      case 'piece': return es ? 'Gana una pieza.' : 'It wins a piece.';
+      case 'exchange': return es ? 'Gana la calidad ([[winningExchange]]).' : 'It wins the exchange ([[winningExchange]]).';
+      case 'pawn': return es ? 'Gana un peón.' : 'It wins a pawn.';
+      default: return es ? 'Gana material.' : 'It wins material.';
+    }
+  }
+
+  function threatText(gNull, threat, lang, first, nlang) {
+    const legal = gNull.moves();
+    if (!legal.includes(threat.move)) return '';
+    const mv = `<b class="mv">${localizeSan(gNull.san(threat.move, legal), nlang || lang)}</b>`;
+    const es = lang === 'es';
+    if (threat.score > MATE - 500) {
+      return es ? `${first ? 'Frena' : 'Además frena'} su [[threat]]: con ${mv} el rival daría [[checkmate]].`
+        : `It ${first ? '' : 'also '}stops their [[threat]]: ${mv} would have led to [[checkmate]].`;
+    }
+    const g = lineGain(gNull, threat.pv, threat.score);
+    if (!g) return '';
+    const what = {
+      en: { queen: 'your queen', rook: 'a rook', piece: 'a piece', exchange: 'the exchange', pawn: 'a pawn', material: 'material' },
+      es: { queen: 'tu dama', rook: 'una torre', piece: 'una pieza', exchange: 'la calidad', pawn: 'un peón', material: 'material' }
+    }[lang][g.kind];
+    return es ? `${first ? 'Frena' : 'Además frena'} su [[threat]]: con ${mv} el rival ganaría ${what}.`
+      : `It ${first ? '' : 'also '}stops their [[threat]]: ${mv} would have won ${what}.`;
+  }
+
+  // Returns { move, from, to, san, sentences[] } (sentences contain [[term]] tokens).
+  function explainBest(g, results, threat, plyIndex, lang, nlang) {
+    const best = results[0];
+    if (!best) return null;
+    const es = lang === 'es';
+    const legal = g.moves();
+    const out = [];
+    const info = moveInfo(g, best.move, legal);
+
+    if (best.score > MATE - 500) {
+      const n = Math.max(1, Math.ceil((MATE - best.score) / 2));
+      const tac = n === 1 ? detectTactics(g, best.move, best.pv).find(x => MATES.has(x.id)) : null;
+      const term = tac ? `[[a:${tac.id}]]` : '[[checkmate]]';
+      out.push(n === 1 ? (es ? `¡Es ${term}! El rey rival no tiene escapatoria.` : `It's ${term}! Their king has no escape.`)
+        : (es ? `Fuerza [[checkmate]] en ${n} jugadas, por mucho que se defienda el rival.` : `It forces [[checkmate]] in ${n} moves, whatever they reply.`));
+    } else {
+      const tactics = detectTactics(g, best.move, best.pv);
+      const major = tactics.find(x => MAJOR.has(x.id) && !MATES.has(x.id));
+      const gain = lineGain(g, best.pv, best.score);
+      if (major) {
+        const text = tacticText(major, lang, true);
+        if (text) out.push(present(text, lang));
+        if (gain) out.push(gainSentence(gain, lang));
+      } else if (gain) {
+        const hang = tactics.find(x => x.id === 'hangingPiece' || x.id === 'winningExchange' || x.id === 'materialGain');
+        out.push(hang ? present(tacticText(hang, lang, true), lang) : gainSentence(gain, lang));
+      }
+    }
+
+    // Defence: compare the opponent's best score if we passed with their best
+    // score after this move. A clear drop means the move stops a real threat.
+    if (threat && out.length < 2 && best.score < MATE - 500) {
+      const theirIfPass = threat.score, theirAfter = -best.score;
+      if (theirIfPass - theirAfter >= 150 || (theirIfPass > MATE - 500 && theirAfter < MATE - 500)) {
+        g.makeNull();
+        const s = threatText(g, threat, lang, !out.length, nlang);
+        g.undo();
+        if (s) out.push(s);
+      }
+    }
+
+    if (!out.length && g.inCheck()) {
+      out.push(es ? 'Es la forma más segura de salir del [[check]].' : "It's the safest way out of [[check]].");
+    }
+    if (!out.length) {
+      const p = detectPrinciples(g, best.move, plyIndex).find(x => !x.warn);
+      if (p) out.push(present(principleText(p, lang, true), lang));
+    }
+    if (!out.length) {
+      out.push(es ? 'Aquí no hay ninguna táctica: el motor la considera simplemente la jugada más sólida, la que mejor mantiene tu posición.'
+        : "There's no tactic here: the engine simply rates it as the most solid move, the one that keeps your position in the best shape.");
+    }
+
+    const second = results.find(r => r.move !== best.move);
+    if (second && out.length < 3) {
+      const gap = winPct(best.score) - winPct(second.score);
+      if (gap >= 10) out.push(es ? 'Las demás jugadas son claramente peores.' : 'Other moves are clearly worse.');
+      else if (gap < 2) out.push(es ? 'Varias jugadas son casi igual de buenas; esta es la primera opción del motor.'
+        : 'Several moves are about as good; this is the engine’s first choice.');
+    }
+    return { move: best.move, from: info.from, to: info.to, san: info.san, sentences: out.slice(0, 3) };
+  }
+
+  return { rateMove, explainBest, openingAt, winPct, termOf, moveInfo };
 })();

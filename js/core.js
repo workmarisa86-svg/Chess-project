@@ -781,7 +781,9 @@ function ChessCore() {
       return results || [];
     }
 
-    chooseMove(g, level) {
+    // timeCap (ms, optional) keeps the robot from losing on time with a clock.
+    chooseMove(g, level, timeCap) {
+      const cap = ms => timeCap ? Math.max(150, Math.min(ms, timeCap)) : ms;
       const legal = g.moves();
       if (!legal.length) return 0;
       const rand = arr => arr[Math.floor(Math.random() * arr.length)];
@@ -807,10 +809,10 @@ function ChessCore() {
           const res = this.analyzeAll(g, { maxDepth: 2, timeMs: 500 });
           if (res.length > 1 && res[0].score - res[1].score < 80) return res[1].move;
         }
-        return this.think(g, { maxDepth: 3, timeMs: 900 }).move;
+        return this.think(g, { maxDepth: 3, timeMs: cap(900) }).move;
       }
-      if (level === 'hard') return this.think(g, { maxDepth: 8, timeMs: 1800 }).move;
-      return this.think(g, { maxDepth: 40, timeMs: 5000 }).move;
+      if (level === 'hard') return this.think(g, { maxDepth: 8, timeMs: cap(1800) }).move;
+      return this.think(g, { maxDepth: 40, timeMs: cap(5000) }).move;
     }
   }
 
@@ -821,9 +823,27 @@ function ChessCore() {
     shared = shared || new Searcher();
     const g = new Chess(msg.fen);
     for (const m of msg.moves) g.make(m);
-    if (msg.type === 'move') return { move: shared.chooseMove(g, msg.level) };
+    if (msg.type === 'move') return { move: shared.chooseMove(g, msg.level, msg.timeCap) };
     if (msg.type === 'analyze') {
       return { results: shared.analyzeAll(g, { maxDepth: msg.depth, timeMs: msg.time }) };
+    }
+    // Best move with the facts needed to explain it: every move's score and
+    // line, plus what the opponent would do if it were their turn (the threat).
+    if (msg.type === 'explain') {
+      const results = shared.analyzeAll(g, { maxDepth: msg.depth || 5, timeMs: msg.time || 1200 });
+      let threat = null;
+      if (results.length && !g.inCheck()) {
+        g.makeNull();
+        const r = shared.think(g, { maxDepth: 4, timeMs: 350 });
+        g.undo();
+        if (r) threat = { move: r.move, score: r.score, pv: r.pv };
+      }
+      return { results, threat };
+    }
+    // Score for the side to move (used when the robot considers a draw offer).
+    if (msg.type === 'eval') {
+      const r = shared.think(g, { maxDepth: 5, timeMs: msg.time || 400 });
+      return { score: r ? r.score : 0 };
     }
     return {};
   }

@@ -5,38 +5,32 @@ Just open `index.html`.
 
 ## Features
 
-- **Full chess rules**: legal moves only, check, checkmate, stalemate, castling, en passant,
-  promotion (with a piece picker), threefold repetition, the fifty-move rule and insufficient material.
-- **Click or drag** pieces (mouse or touch). The selected piece and its legal moves are highlighted.
-- Turn indicator, **move list in algebraic notation**, captured pieces with material balance.
-- The opponent's last move (the computer's, or the other player's) is highlighted in **gold**
-  on both squares until the next move.
-- **New Game**, **Undo Move** and **Flip board** buttons. Against the computer you choose to play
-  **White, Black or Random**; as Black the board is flipped so your pieces are at the bottom.
-- **Statistics**: every finished game is saved in the browser. See games played, wins, losses,
-  draws and win % for each mode and difficulty, filter by the color you played, and reset
-  (with confirmation).
-- **"Did you know?"** 💡 chess facts on the new-game screen and after each game, with a
-  *Next fact* button; facts don't repeat until all of them have been shown.
-- **English / Español** switch (always visible in the top bar). Everything is translated, including
-  the coach and the glossary, and the move list uses Spanish notation (R, D, T, A, C) in Spanish.
-  The choice is remembered.
-- **Play modes**
-  1. *Two Players* on the same device.
-  2. *Vs Computer* with five levels: Beginner, Easy, Medium, Hard and Impossible.
-  3. *Learn Mode (Coach)*: play the computer while a coach explains every move:
-     - names tactics (fork, pin, skewer, discovered attack/check, double check, double attack,
-       deflection, decoy, zwischenzug, removing the defender, overloading, x-ray, back-rank mate,
-       smothered mate, sacrifice, hanging pieces…),
-     - rates your move: Brilliant, Great, Good, Inaccuracy, Mistake or Blunder,
-     - tells you the better move you missed (by name) and what your opponent can do after a mistake,
-     - explains the computer's moves and warns you about its threats,
-     - recognizes openings (Italian Game, Sicilian Defense, Queen's Gambit and 40+ more),
-     - mentions principles (center control, development, king safety, castling early, passed pawns…),
-     - **Show me** draws the better move on the board, **Take back** lets you retry.
-- **Term explanations**: every term the coach mentions has a ▼ button that opens a short explanation
-  (what it is, why it's useful, an example) with a mini board showing the pattern.
-- **Glossary** button with all terms in alphabetical order.
+- **Main menu** (no board): Play, Challenge, Settings, Statistics and Glossary, plus **Resume game**
+  when a game is in progress (it survives closing the app). The English/Español switch and the
+  light/dark toggle are always in the top bar. A 💡 *Did you know?* fact sits under the buttons.
+- **Play**
+  - *Vs Friend*: two players on one device, with optional clocks and auto-flip.
+  - *Vs Robot → Alone*: choose White, Black or Random and a level (Beginner, Easy, Medium, Hard,
+    Impossible) and play with no feedback.
+  - *Vs Robot → Coach*: the same, plus a quiet coach. After each of your moves it shows one label —
+    **Great**, **Accurate**, **Good** or **Blunder**. After a blunder you can *Take back*, *Show best
+    move* or *Keep my move*. The **Best move** button (your turn only) reveals the best move with an
+    arrow and a 1–3 sentence explanation from the engine's analysis (what it wins, threatens or
+    stops, named with the proper term and a ▼ glossary dropdown), and you choose whether to play it.
+- **Board screen**: a large board with Flip, Undo and (in Coach) Best move; a ⋯ menu with New game,
+  Offer draw and Resign; the ⌄ chevron returns to the menu (asking to keep the game, resign or
+  cancel). Compact player bars with captured pieces and clocks, a collapsible move list, the gold
+  highlight of the opponent's last move, legal-move and check highlights, and sounds.
+- **Full chess rules**: castling, en passant, promotion, checkmate, stalemate, threefold repetition,
+  the fifty-move rule and insufficient material; time-outs (a draw if the opponent can't mate),
+  resignation and draws by agreement.
+- **Settings**: clock (none, 1+0, 3+2, 5+0, 10+0, 15+10, 30+0 or custom), board colors, coordinates,
+  legal-move and last-move highlights, auto-queen, confirm moves on touch screens, auto-flip, sound,
+  notation language, interface language, theme, and Reset settings. Everything is saved.
+- **Statistics**: results by mode, level and color, plus the coach's counts (Great, Accurate, Good,
+  Blunder, and how often you used Best move). Reset asks for confirmation.
+- **Glossary**: every term the coach uses, alphabetical, with explanations and mini-board examples.
+- **Challenge**: coming in the next update.
 
 ## Install it and play offline
 
@@ -81,7 +75,8 @@ js/core.js       chess rules, evaluation and search engine (also runs in a Web W
 js/i18n.js       interface text in English and Spanish
 js/terms.js      glossary terms, openings and opening book
 js/facts.js      "Did you know?" facts
-js/coach.js      move analysis and coach explanations
+js/coach.js      move ratings and best-move explanations
+js/sound.js      board sounds (synthesized, no audio files)
 js/app.js        board, controls and game flow
 manifest.webmanifest  app name, colors and icons for installing
 sw.js            service worker: stores the app for offline use

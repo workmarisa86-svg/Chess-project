@@ -1,4 +1,5 @@
-/* Main application: board UI, game flow, computer opponent and coach panel. */
+/* Main application: screens and menus, board UI, game flow, clocks, robot
+   opponent, the simple coach, settings, statistics and glossary. */
 (() => {
   'use strict';
   const { WHITE, BLACK, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, START_FEN,
@@ -13,13 +14,14 @@
   };
   const LEVELS = ['beginner', 'easy', 'medium', 'hard', 'impossible'];
   const LEVEL_KEY = { beginner: 'lvlBeginner', easy: 'lvlEasy', medium: 'lvlMedium', hard: 'lvlHard', impossible: 'lvlImpossible' };
+  const CLOCK_PRESETS = [[1, 0], [3, 2], [5, 0], [10, 0], [15, 10], [30, 0]];
   const $ = id => document.getElementById(id);
 
   // ---------------------------------------------------------------- storage
   // localStorage is shared by every app on the same github.io domain, so all
   // keys carry this app's own prefix: chess-coach.stats, chess-coach.lang, ...
   const STORE_PREFIX = 'chess-coach.';
-  const OLD_PREFIX = 'chesscoach.'; // used by earlier versions
+  const OLD_PREFIX = 'chesscoach.'; // used by early versions
   (function migrateOldKeys() {
     try {
       const old = [];
@@ -37,15 +39,41 @@
   })();
   const store = {
     get(k, d) { try { const v = localStorage.getItem(STORE_PREFIX + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
-    set(k, v) { try { localStorage.setItem(STORE_PREFIX + k, JSON.stringify(v)); } catch (e) { /* ignore */ } }
+    set(k, v) { try { localStorage.setItem(STORE_PREFIX + k, JSON.stringify(v)); } catch (e) { /* ignore */ } },
+    remove(k) { try { localStorage.removeItem(STORE_PREFIX + k); } catch (e) { /* ignore */ } }
   };
+
+  // ---------------------------------------------------------------- settings
+  const DEFAULT_SETTINGS = {
+    clock: null,            // null = no clock, or { base: minutes, inc: seconds }
+    boardTheme: 'brown', coords: true, showLegal: true, showLast: true,
+    autoQueen: false, confirmTouch: false, autoFlip: false,
+    sound: true, notation: 'auto', theme: 'system'
+  };
+  const settings = Object.assign({}, DEFAULT_SETTINGS, store.get('settings', {}));
+  const saveSettings = () => store.set('settings', settings);
+
+  // Robot setup (colour + level). Earlier versions kept these as separate
+  // "mode", "level" and "color" keys: fold them in once and drop the old keys.
+  const robotSetup = Object.assign({ level: 'medium', color: 'w' }, store.get('robotSetup', {}));
+  (function migrateSetup() {
+    const oldLevel = store.get('level', null), oldColor = store.get('color', null);
+    if (store.get('robotSetup', null) === null && (oldLevel || oldColor)) {
+      if (LEVELS.includes(oldLevel)) robotSetup.level = oldLevel;
+      if (['w', 'b', 'r'].includes(oldColor)) robotSetup.color = oldColor;
+      store.set('robotSetup', robotSetup);
+    }
+    ['mode', 'level', 'color', 'seenSetup'].forEach(k => store.remove(k));
+  })();
+  if (!LEVELS.includes(robotSetup.level)) robotSetup.level = 'medium';
 
   // ---------------------------------------------------------------- state
   const state = {
     lang: store.get('lang', (navigator.language || 'en').toLowerCase().startsWith('es') ? 'es' : 'en'),
-    mode: store.get('mode', 'learn'),
-    level: store.get('level', 'medium'),
-    colorChoice: store.get('color', 'w'),
+    screen: 'menu',
+    setupMode: 'learn',
+    mode: null,            // 'pvp' (Vs Friend), 'cpu' (Robot, Alone), 'learn' (Robot, Coach)
+    level: robotSetup.level,
     humanColor: WHITE,
     game: new Core.Chess(),
     moves: [], sans: [],
@@ -55,17 +83,23 @@
     busy: false,
     token: 0,
     over: null,
-    coach: [], entrySeq: 0,
-    hint: null,
+    recorded: false,
+    hint: null,            // arrow on the board: { from, to }
+    strip: null,           // coach strip content
+    pending: 0,            // move waiting for touch confirmation
+    clock: null,
     openTerms: new Map(),
-    openDemos: new Set()
+    openDemos: new Set(),
+    statsColor: 'all',
+    factIdx: -1
   };
-  if (!LEVELS.includes(state.level)) state.level = 'medium';
-  if (!['pvp', 'cpu', 'learn'].includes(state.mode)) state.mode = 'learn';
 
   const t = key => (UI_STRINGS[state.lang] && UI_STRINGS[state.lang][key]) || UI_STRINGS.en[key] || key;
+  const tf = (key, vars) => t(key).replace(/\{(\w+)\}/g, (_, k) => vars[k] !== undefined ? vars[k] : '');
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+  const nl = () => settings.notation === 'auto' ? state.lang : settings.notation; // notation language
+  const san = s => localizeSan(s, nl());
 
   // ---------------------------------------------------------------- engine
   // Runs the search in a Web Worker so the page stays responsive; falls back
@@ -107,6 +141,7 @@
       }, 30);
     },
     request(msg) {
+      msg.fen = msg.fen || START_FEN;
       return new Promise(resolve => {
         if (this.fallback || !this.worker) { this.runLocal(msg, resolve); return; }
         const id = ++this.seq;
@@ -123,13 +158,156 @@
     for (let i = 0; i < n; i++) g.make(state.moves[i]);
     return g;
   }
-  const isComputerGame = () => state.mode === 'cpu' || state.mode === 'learn';
-  const isHumanTurn = () => !isComputerGame() || state.game.turn === state.humanColor;
-  const canInteract = () => !state.over && !state.busy && isHumanTurn();
+  const isRobotGame = () => state.mode === 'cpu' || state.mode === 'learn';
+  const isHumanTurn = () => !isRobotGame() || state.game.turn === state.humanColor;
+  const canInteract = () => state.screen === 'game' && !state.over && !state.busy && !state.pending && isHumanTurn() &&
+    !(state.strip && state.strip.kind === 'blunder');
   const colorName = c => c === WHITE ? t('white') : t('black');
+  const sideName = c => t(c === WHITE ? 'whiteSide' : 'blackSide'); // used mid-sentence
+  const gameInProgress = () => !!state.mode && !state.over && state.moves.length > 0;
+
+  // ---------------------------------------------------------------- theme
+  const darkQuery = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null;
+  function resolvedTheme() {
+    if (settings.theme === 'light' || settings.theme === 'dark') return settings.theme;
+    return darkQuery && darkQuery.matches ? 'dark' : 'light';
+  }
+  function applyTheme() {
+    document.documentElement.dataset.theme = resolvedTheme();
+    document.documentElement.dataset.board = settings.boardTheme;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = resolvedTheme() === 'dark' ? '#17191c' : '#2f6f57';
+  }
+  if (darkQuery && darkQuery.addEventListener) darkQuery.addEventListener('change', () => { if (settings.theme === 'system') applyTheme(); });
+  $('themeToggle').addEventListener('click', () => {
+    settings.theme = resolvedTheme() === 'dark' ? 'light' : 'dark';
+    saveSettings();
+    applyTheme();
+    if (state.screen === 'settings') renderSettings();
+  });
+
+  // ---------------------------------------------------------------- screens
+  const SCREENS = {
+    menu: 'scrMenu', play: 'scrPlay', robot: 'scrRobot', setup: 'scrSetup', game: 'scrGame',
+    settings: 'scrSettings', stats: 'scrStats', glossary: 'scrGlossary', challenge: 'scrChallenge'
+  };
+
+  function show(name, push) {
+    if (state.screen === 'game' && name !== 'game') pauseClock();
+    for (const [k, id] of Object.entries(SCREENS)) $(id).hidden = k !== name;
+    state.screen = name;
+    closeMore();
+    if (push !== false && name !== 'menu') history.pushState({ s: name }, '');
+    window.scrollTo(0, 0);
+    renderScreen();
+    if (name === 'game') resumeClock();
+  }
+
+  function renderScreen() {
+    switch (state.screen) {
+      case 'menu': renderMenu(); break;
+      case 'setup': renderSetup(); break;
+      case 'game': renderGame(); break;
+      case 'settings': renderSettings(); break;
+      case 'stats': renderStats(); break;
+      case 'glossary': renderGlossary(); break;
+    }
+  }
+
+  function goMenu() {
+    if (state.screen === 'game' && gameInProgress()) { askLeave(); return; }
+    show('menu', false);
+    history.replaceState({ s: 'menu' }, '');
+  }
+
+  history.replaceState({ s: 'menu' }, '');
+  window.addEventListener('popstate', e => {
+    const target = (e.state && e.state.s) || 'menu';
+    if (state.screen === 'game' && target !== 'game' && gameInProgress()) {
+      history.pushState({ s: 'game' }, '');
+      askLeave();
+      return;
+    }
+    if (target === 'game' && !state.mode) { show('menu', false); return; }
+    show(target, false);
+  });
+
+  document.addEventListener('click', e => {
+    const back = e.target.closest('[data-back]');
+    if (back) { history.back(); return; }
+    const go = e.target.closest('[data-go]');
+    if (!go) return;
+    const where = go.dataset.go;
+    if (where === 'resume') resumeGame();
+    else if (where === 'friend') confirmNewGame(() => startGame('pvp'));
+    else if (where === 'setup-learn' || where === 'setup-cpu') { state.setupMode = where.slice(6); show('setup'); }
+    else show(where);
+  });
+  $('brandHome').addEventListener('click', goMenu);
+  $('btnLeave').addEventListener('click', goMenu);
+
+  // ---------------------------------------------------------------- dialogs
+  let lastFocus = null;
+  function openModal(id) {
+    document.querySelectorAll('.modal').forEach(m => { if (m.id !== id && !m.hidden) m.hidden = true; });
+    if ($(id).hidden) lastFocus = document.activeElement;
+    $(id).hidden = false;
+    const f = $(id).querySelector('.primary, button, input');
+    if (f) setTimeout(() => f.focus(), 0);
+  }
+  function closeModal(id) {
+    $(id).hidden = true;
+    if (id === 'promoModal') deselect();
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+  document.querySelectorAll('.modal').forEach(m => {
+    m.addEventListener('click', e => {
+      if (e.target === m || e.target.closest('[data-close]')) closeModal(m.id);
+    });
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    const open = Array.from(document.querySelectorAll('.modal')).find(m => !m.hidden);
+    if (open) closeModal(open.id); else closeMore();
+  });
+
+  // ask(title, text, [{ key, cls, fn }]) — a small choice dialog.
+  function ask(titleKey, text, buttons) {
+    $('askTitle').textContent = t(titleKey);
+    $('askText').textContent = text || '';
+    $('askText').hidden = !text;
+    const box = $('askActions');
+    box.innerHTML = '';
+    for (const b of buttons) {
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'btn ' + (b.cls || '');
+      el.textContent = t(b.key);
+      el.addEventListener('click', () => { closeModal('askModal'); if (b.fn) b.fn(); });
+      box.appendChild(el);
+    }
+    openModal('askModal');
+  }
+
+  function askLeave() {
+    ask('leaveTitle', t('leaveText'), [
+      { key: 'keepIt', cls: 'primary', fn: () => { saveGame(); show('menu', false); history.replaceState({ s: 'menu' }, ''); } },
+      { key: 'resign', cls: 'danger', fn: () => { resign(); show('menu', false); history.replaceState({ s: 'menu' }, ''); } },
+      { key: 'cancel' }
+    ]);
+  }
+
+  function confirmNewGame(fn) {
+    if (gameInProgress() || savedGame()) {
+      ask('newGameTitle', t('newGameText'), [
+        { key: 'newGame', cls: 'primary', fn: () => { discardSaved(); fn(); } },
+        { key: 'cancel' }
+      ]);
+    } else fn();
+  }
 
   // ---------------------------------------------------------------- board
-  const boardEl = $('board'), arrowsEl = $('arrows'), wrapEl = $('boardWrap');
+  const boardEl = $('board'), arrowsEl = $('arrows');
   const sqEls = new Map();
 
   function buildBoard() {
@@ -161,38 +339,40 @@
       (g.inCheck() ? g.kings[g.turn >> 3] : -1) : -1;
     const hint = state.hint;
     const movable = canInteract();
-    // The opponent's last move is shown in gold: every move in Two Players
+    // The opponent's last move is shown in gold: every move in Vs Friend
     // (the side to move always faces the player who just moved), and the
-    // computer's moves in the computer modes. Your own last move stays subtle.
+    // robot's moves against the robot. Your own last move stays subtle.
     let oppLast = false;
     if (state.lastMove) {
       const mover = g.board[state.lastMove.to] & BLACK;
-      oppLast = !isComputerGame() || mover !== state.humanColor;
+      oppLast = !isRobotGame() || mover !== state.humanColor;
     }
+    const showLast = settings.showLast, showLegal = settings.showLegal, coords = settings.coords;
     for (const [sq, el] of sqEls) {
       const r = sq >> 4, f = sq & 7;
       el.style.gridRow = flip ? r + 1 : 8 - r;
       el.style.gridColumn = flip ? 8 - f : f + 1;
       const p = g.board[sq];
       const cls = el.classList;
-      const onLast = !!state.lastMove && (state.lastMove.from === sq || state.lastMove.to === sq);
+      const onLast = showLast && !!state.lastMove && (state.lastMove.from === sq || state.lastMove.to === sq);
+      const target = showLegal && state.targets.includes(sq);
       cls.toggle('last-opp', onLast && oppLast);
       cls.toggle('last', onLast && !oppLast);
       cls.toggle('sel', state.selected === sq);
-      cls.toggle('target', state.targets.includes(sq));
-      cls.toggle('capture', state.targets.includes(sq) && (!!p || isEpTarget(sq)));
+      cls.toggle('target', target);
+      cls.toggle('capture', target && (!!p || isEpTarget(sq)));
       cls.toggle('check', sq === checkSq);
       cls.toggle('hint', !!hint && (sqParse(hint.from) === sq || sqParse(hint.to) === sq));
       cls.toggle('movable', movable && !!p && (p & BLACK) === g.turn);
       cls.remove('drag-src', 'drop-over');
       let html = pieceHTML(p);
-      const leftCol = flip ? f === 7 : f === 0;
-      const bottomRow = flip ? r === 7 : r === 0;
-      if (leftCol) html += `<span class="coord rank">${r + 1}</span>`;
-      if (bottomRow) html += `<span class="coord file">${'abcdefgh'[f]}</span>`;
+      if (coords) {
+        if (flip ? f === 7 : f === 0) html += `<span class="coord rank">${r + 1}</span>`;
+        if (flip ? r === 7 : r === 0) html += `<span class="coord file">${'abcdefgh'[f]}</span>`;
+      }
       if (el._html !== html) { el.innerHTML = html; el._html = html; }
     }
-    renderArrows();
+    arrowsEl.innerHTML = arrowSVG(hint ? [[hint.from, hint.to]] : [], flip, 800);
   }
 
   function isEpTarget(sq) {
@@ -217,13 +397,8 @@
     return out;
   }
 
-  function renderArrows() {
-    const list = state.hint ? [[state.hint.from, state.hint.to]] : [];
-    arrowsEl.innerHTML = arrowSVG(list, state.flipped, 800);
-  }
-
   // ---------------------------------------------------------------- input
-  let drag = null;
+  let drag = null, lastPointer = 'mouse';
 
   function squareFromPoint(x, y) {
     const rect = boardEl.getBoundingClientRect();
@@ -244,6 +419,8 @@
     state.selected = -1; state.targets = [];
     renderBoard();
   }
+
+  document.addEventListener('pointerdown', e => { lastPointer = e.pointerType || 'mouse'; Sound.unlock(); }, true);
 
   boardEl.addEventListener('pointerdown', e => {
     if (e.button !== undefined && e.button !== 0) return;
@@ -304,8 +481,25 @@
   function tryMove(from, to) {
     const cands = state.game.moves().filter(m => mFrom(m) === from && mTo(m) === to);
     if (!cands.length) { deselect(); return; }
-    if (cands.length > 1) { askPromotion(cands); return; }
-    humanMove(cands[0]);
+    if (cands.length > 1) {
+      if (settings.autoQueen) { chooseMove(cands.find(x => mPromo(x) === QUEEN)); return; }
+      askPromotion(cands);
+      return;
+    }
+    chooseMove(cands[0]);
+  }
+
+  // With "confirm moves on touch screens", a tapped move waits for ✓.
+  function chooseMove(m) {
+    if (settings.confirmTouch && lastPointer === 'touch') {
+      state.pending = m;
+      state.selected = -1; state.targets = [];
+      state.hint = { from: sqName(mFrom(m)), to: sqName(mTo(m)) };
+      state.strip = { kind: 'confirm', move: m, prev: state.strip };
+      renderGame();
+      return;
+    }
+    humanMove(m);
   }
 
   function askPromotion(cands) {
@@ -318,59 +512,164 @@
       b.type = 'button';
       b.innerHTML = pieceHTML(pt | color);
       b.setAttribute('aria-label', cap(PIECE_NAMES[state.lang][pt]));
-      b.addEventListener('click', () => { closeModal('promoModal'); humanMove(m); });
+      b.addEventListener('click', () => { closeModal('promoModal'); chooseMove(m); });
       box.appendChild(b);
     }
     openModal('promoModal');
   }
 
+  // ---------------------------------------------------------------- clocks
+  // Clocks are used in Vs Friend and Vs Robot (Alone), not in Coach games.
+  const clockConfig = mode => (settings.clock && mode !== 'learn') ? settings.clock : null;
+
+  function newClock(cfg) {
+    return cfg ? { w: cfg.base * 60000, b: cfg.base * 60000, inc: cfg.inc * 1000, running: false, last: 0, base: cfg.base, incS: cfg.inc } : null;
+  }
+  const sideKey = c => c === WHITE ? 'w' : 'b';
+  function timeLeft(c) {
+    const k = state.clock;
+    if (!k) return 0;
+    let v = k[sideKey(c)];
+    if (k.running && c === state.game.turn) v -= performance.now() - k.last;
+    return Math.max(0, v);
+  }
+  function clockAfterMove(mover) {
+    const k = state.clock;
+    if (!k || state.over) return;
+    const now = performance.now();
+    if (k.running) k[sideKey(mover)] -= now - k.last;
+    k[sideKey(mover)] += k.inc;
+    k.running = true;
+    k.last = now;
+  }
+  function pauseClock() {
+    const k = state.clock;
+    if (!k || !k.running) return;
+    k[sideKey(state.game.turn)] = timeLeft(state.game.turn);
+    k.running = false;
+    k.paused = true;
+  }
+  function resumeClock() {
+    const k = state.clock;
+    if (!k || !k.paused || state.over) return;
+    k.paused = false;
+    k.running = true;
+    k.last = performance.now();
+  }
+  function fmtClock(ms) {
+    const s = ms / 1000;
+    if (s < 10) return s.toFixed(1);
+    const m = Math.floor(s / 60), r = Math.floor(s % 60);
+    return `${m}:${String(r).padStart(2, '0')}`;
+  }
+  // Can this side still give mate? (If not, running out of time is a draw.)
+  function canMate(color) {
+    const b = state.game.board;
+    let minors = 0;
+    for (let sq = 0; sq < 128; sq++) {
+      if (sq & 0x88) { sq += 7; continue; }
+      const p = b[sq];
+      if (!p || (p & BLACK) !== color) continue;
+      const tp = p & 7;
+      if (tp === PAWN || tp === ROOK || tp === QUEEN) return true;
+      if (tp === KNIGHT || tp === BISHOP) minors++;
+    }
+    return minors >= 2;
+  }
+  setInterval(() => {
+    const k = state.clock;
+    if (!k || !k.running || state.over || state.screen !== 'game') return;
+    const side = state.game.turn;
+    if (timeLeft(side) <= 0) {
+      k[sideKey(side)] = 0;
+      k.running = false;
+      state.token++;
+      state.busy = false;
+      endGame(canMate(side ^ BLACK) ? { reason: 'timeout', winner: side ^ BLACK, loser: side } : { reason: 'timeoutDraw' });
+      return;
+    }
+    updateClocks();
+  }, 200);
+
+  function updateClocks() {
+    document.querySelectorAll('.clock[data-side]').forEach(el => {
+      const c = el.dataset.side === 'w' ? WHITE : BLACK;
+      const ms = timeLeft(c);
+      el.textContent = fmtClock(ms);
+      el.classList.toggle('running', !!state.clock && state.clock.running && !state.over && state.game.turn === c);
+      el.classList.toggle('low', ms < 20000);
+    });
+  }
+
   // ---------------------------------------------------------------- game flow
+  function playSound(m, st) {
+    if (st && st.over) Sound.play('end');
+    else if (state.game.inCheck()) Sound.play('check');
+    else if (mFlags(m) & Core.F_CAPTURE) Sound.play('capture');
+    else Sound.play('move');
+  }
+
   function applyMove(m) {
     const g = state.game;
-    const san = g.san(m, g.moves());
+    const mover = g.turn;
+    const s = g.san(m, g.moves());
     g.make(m);
     state.moves.push(m);
-    state.sans.push(san);
+    state.sans.push(s);
     state.lastMove = { from: mFrom(m), to: mTo(m) };
     state.selected = -1; state.targets = [];
     state.hint = null;
+    state.pending = 0;
+    clockAfterMove(mover);
+    if (state.mode === 'pvp' && settings.autoFlip) state.flipped = g.turn === BLACK;
     const st = g.status();
-    state.over = st.over ? st : null;
-    if (state.over && !state.recorded) {
+    playSound(m, st);
+    if (st.over) endGame(st, true);
+    else saveGame();
+  }
+
+  function endGame(over, quiet) {
+    state.over = Object.assign({ over: true }, over);
+    if (state.clock) { pauseClock(); state.clock.running = false; }
+    if (!state.recorded) {
       state.recorded = true;
       recordGame(state.over);
-      nextFact();
-      $('endFact').hidden = false;
     }
+    if (!quiet) Sound.play('end');
+    discardSaved();
+    nextFact();
+    $('endFact').hidden = false;
+    renderGame();
   }
 
   function humanMove(m) {
     const ply = state.moves.length;
+    state.strip = null;
     applyMove(m);
     if (state.mode === 'learn') {
-      const entry = addEntry({ kind: 'pending', ply });
       const token = state.token;
       state.busy = true;
-      renderAll();
-      Engine.request({ type: 'analyze', fen: START_FEN, moves: state.moves.slice(0, ply), depth: 5, time: 1300 })
-        .then(res => {
-          if (token !== state.token) return;
-          try {
-            const g = positionAt(ply);
-            entry.kind = 'user';
-            entry.data = Coach.analyzeUserMove(g, m, res.results || [], ply, state.sans.slice(0, ply + 1));
-          } catch (err) {
-            console.error(err);
-            removeEntry(entry);
-          }
-          state.busy = false;
-          if (!state.over) computerTurn();
-          else renderAll();
-        });
+      state.strip = { kind: 'checking' };
+      renderGame();
+      Engine.request({ type: 'analyze', moves: state.moves.slice(0, ply), depth: 5, time: 1000 }).then(res => {
+        if (token !== state.token) return;
+        const results = res.results || [];
+        const r = Coach.rateMove(results, m);
+        bumpCoach(r.label);
+        state.busy = false;
+        if (r.label === 'blunder' && !state.over) {
+          state.strip = { kind: 'blunder', move: m, ply, san: state.sans[ply] };
+          Sound.play('error');
+          renderGame();
+          return;
+        }
+        state.strip = { kind: 'label', label: r.label, san: state.sans[ply] };
+        if (!state.over) robotTurn(); else renderGame();
+      });
       return;
     }
-    renderAll();
-    if (!state.over && isComputerGame()) computerTurn();
+    renderGame();
+    if (!state.over && isRobotGame()) robotTurn();
   }
 
   function bookMove() {
@@ -381,34 +680,26 @@
     return state.game.moveFromSan(options[Math.floor(Math.random() * options.length)]);
   }
 
-  function computerTurn() {
+  function robotTurn() {
     state.busy = true;
-    renderAll();
+    renderGame();
     const token = state.token;
     const started = Date.now();
     const finish = m => {
       if (token !== state.token) return;
-      const wait = Math.max(0, 450 - (Date.now() - started));
+      const wait = Math.max(0, 350 - (Date.now() - started));
       setTimeout(() => {
-        if (token !== state.token) return;
+        if (token !== state.token || state.over) return;
         state.busy = false;
-        if (!m) { renderAll(); return; }
-        const ply = state.moves.length;
-        let entry = null;
-        if (state.mode === 'learn') {
-          try {
-            const san = state.game.san(m, state.game.moves());
-            entry = { kind: 'cpu', ply, data: Coach.analyzeComputerMove(state.game, m, ply, state.sans.concat(san)) };
-          } catch (err) { console.error(err); }
-        }
-        applyMove(m);
-        if (entry) addEntry(entry);
-        renderAll();
+        if (m) applyMove(m);
+        renderGame();
       }, wait);
     };
     const bm = bookMove();
     if (bm) { finish(bm); return; }
-    Engine.request({ type: 'move', fen: START_FEN, moves: state.moves.slice(), level: state.level })
+    // With a clock, never spend more than a small share of the time left.
+    const timeCap = state.clock ? Math.max(150, timeLeft(state.game.turn) / 30) : 0;
+    Engine.request({ type: 'move', moves: state.moves.slice(), level: state.level, timeCap })
       .then(r => finish(r.move || 0));
   }
 
@@ -422,62 +713,263 @@
     state.lastMove = lm ? { from: mFrom(lm), to: mTo(lm) } : null;
     state.over = null;
     state.hint = null;
+    state.pending = 0;
     state.selected = -1; state.targets = [];
-    state.coach = state.coach.filter(e => e.kind === 'info' || e.ply < state.moves.length);
+    if (state.mode === 'pvp' && settings.autoFlip) state.flipped = state.game.turn === BLACK;
     $('endFact').hidden = true;
   }
 
+  const boardResult = () => state.over && ['checkmate', 'stalemate', 'threefold', 'fifty', 'insufficient'].includes(state.over.reason);
+
+  function canUndo() {
+    if (state.over && !boardResult()) return false; // resignations, time and agreed draws are final
+    if (!state.moves.length) return false;
+    if (isRobotGame()) return state.moves.length > (state.humanColor === WHITE ? 0 : 1) || state.busy;
+    return true;
+  }
+
   function undo() {
-    if (!state.moves.length) return;
+    if (!canUndo()) return;
     state.token++;
     const wasBusy = state.busy;
     state.busy = false;
-    if (!isComputerGame()) { undoPlies(1); renderAll(); return; }
+    state.strip = null;
+    if (!isRobotGame()) { undoPlies(1); saveGame(); renderGame(); return; }
     // Go back to the position before the human's most recent move.
-    let n = 0;
     const turnAt = k => (k % 2 === 0 ? WHITE : BLACK);
-    let k = state.moves.length;
-    if (wasBusy && turnAt(k) !== state.humanColor) { n = 1; }
+    let n = 0, k = state.moves.length;
+    if (wasBusy && turnAt(k) !== state.humanColor) n = 1;
     else {
       while (k > 0) { k--; n++; if (turnAt(k) === state.humanColor) break; }
       if (turnAt(k) !== state.humanColor) n = 0;
     }
     if (n) undoPlies(n);
-    renderAll();
+    saveGame();
+    renderGame();
   }
 
-  function takeBackTo(ply) {
+  function newGameState(mode) {
     state.token++;
-    state.busy = false;
-    undoPlies(state.moves.length - ply);
-    renderAll();
-  }
-
-  function newGame() {
-    state.token++;
+    state.mode = mode;
     state.game = new Core.Chess(START_FEN);
     state.moves = []; state.sans = [];
     state.selected = -1; state.targets = [];
     state.lastMove = null; state.over = null; state.busy = false; state.hint = null;
-    state.coach = []; state.openTerms.clear(); state.openDemos.clear();
-    state.recorded = false;
+    state.strip = null; state.pending = 0; state.recorded = false;
+    state.openTerms.clear(); state.openDemos.clear();
+    state.clock = newClock(clockConfig(mode));
     $('endFact').hidden = true;
-    state.humanColor = state.colorChoice === 'b' ? BLACK : state.colorChoice === 'r' ? (Math.random() < 0.5 ? WHITE : BLACK) : WHITE;
-    if (!isComputerGame()) state.humanColor = WHITE;
+  }
+
+  function startGame(mode) {
+    newGameState(mode);
+    if (mode === 'pvp') {
+      state.humanColor = WHITE;
+    } else {
+      state.level = robotSetup.level;
+      const c = robotSetup.color;
+      state.humanColor = c === 'b' ? BLACK : c === 'r' ? (Math.random() < 0.5 ? WHITE : BLACK) : WHITE;
+    }
     state.flipped = state.humanColor === BLACK;
-    if (state.mode === 'learn') addEntry({ kind: 'info', ply: -1, key: state.humanColor === BLACK ? 'coachWelcomeBlack' : 'coachWelcome' });
-    renderAll();
-    if (isComputerGame() && state.game.turn !== state.humanColor) computerTurn();
+    show('game');
+    if (isRobotGame() && state.game.turn !== state.humanColor) robotTurn();
   }
 
-  // ---------------------------------------------------------------- coach panel
-  function addEntry(e) {
-    e.id = ++state.entrySeq;
-    state.coach.push(e);
-    return e;
+  function resign() {
+    if (!state.mode || state.over) return;
+    state.token++;
+    state.busy = false;
+    const loser = isRobotGame() ? state.humanColor : state.game.turn;
+    endGame({ reason: 'resign', winner: loser ^ BLACK, loser });
   }
-  function removeEntry(e) { state.coach = state.coach.filter(x => x !== e); }
 
+  function offerDraw() {
+    if (!state.mode || state.over || state.busy) return;
+    if (!isRobotGame()) {
+      const other = state.game.turn ^ BLACK;
+      ask('drawOfferTitle', tf('drawOfferText', { side: colorName(other) }), [
+        { key: 'accept', cls: 'primary', fn: () => endGame({ reason: 'agreement' }) },
+        { key: 'decline' }
+      ]);
+      return;
+    }
+    if (!isHumanTurn()) return;
+    state.busy = true;
+    renderGame();
+    const token = state.token;
+    Engine.request({ type: 'eval', moves: state.moves.slice(), time: 400 }).then(r => {
+      if (token !== state.token) return;
+      state.busy = false;
+      // The robot accepts unless it thinks it is better (score is from your side).
+      if ((r.score || 0) >= -40) { toast('robotAcceptsDraw'); endGame({ reason: 'agreement' }); }
+      else { toast('robotDeclinesDraw'); renderGame(); }
+    });
+  }
+
+  // ---------------------------------------------------------------- saving / resuming
+  function saveGame() {
+    if (!gameInProgress()) { discardSaved(); return; }
+    const k = state.clock;
+    store.set('game', {
+      mode: state.mode, level: state.level, humanColor: state.humanColor, moves: state.moves.slice(),
+      flipped: state.flipped,
+      clock: k ? { w: timeLeft(WHITE), b: timeLeft(BLACK), inc: k.inc, base: k.base, incS: k.incS } : null
+    });
+  }
+  const savedGame = () => {
+    const s = store.get('game', null);
+    return s && Array.isArray(s.moves) && s.moves.length && ['pvp', 'cpu', 'learn'].includes(s.mode) ? s : null;
+  };
+  function discardSaved() { store.remove('game'); }
+
+  function resumeGame() {
+    if (state.mode && gameInProgress()) { show('game'); if (isRobotGame() && !isHumanTurn() && !state.busy) robotTurn(); return; }
+    const s = savedGame();
+    if (!s) { show('menu', false); return; }
+    newGameState(s.mode);
+    state.level = LEVELS.includes(s.level) ? s.level : 'medium';
+    state.humanColor = s.humanColor === BLACK ? BLACK : WHITE;
+    state.flipped = !!s.flipped;
+    try {
+      for (const m of s.moves) {
+        if (!state.game.moves().includes(m)) throw new Error('bad move');
+        const sn = state.game.san(m, state.game.moves());
+        state.game.make(m);
+        state.moves.push(m);
+        state.sans.push(sn);
+      }
+    } catch (e) { discardSaved(); show('menu', false); return; }
+    const lm = state.moves[state.moves.length - 1];
+    state.lastMove = lm ? { from: mFrom(lm), to: mTo(lm) } : null;
+    if (s.clock && state.clock !== undefined) {
+      state.clock = { w: s.clock.w, b: s.clock.b, inc: s.clock.inc, base: s.clock.base, incS: s.clock.incS, running: false, last: 0, paused: true };
+    }
+    show('game');
+    if (isRobotGame() && !isHumanTurn()) robotTurn();
+  }
+
+  // ---------------------------------------------------------------- coach
+  function bumpCoach(label) {
+    const c = Object.assign({ great: 0, accurate: 0, good: 0, blunder: 0, bestUsed: 0 }, store.get('coachStats', {}));
+    c[label] = (c[label] || 0) + 1;
+    store.set('coachStats', c);
+  }
+
+  function requestBest(fromBlunder) {
+    if (state.mode !== 'learn' || state.busy || state.over || !isHumanTurn()) return;
+    bumpCoach('bestUsed');
+    state.busy = true;
+    state.strip = { kind: 'finding' };
+    renderGame();
+    const token = state.token;
+    const ply = state.moves.length;
+    Engine.request({ type: 'explain', moves: state.moves.slice(), depth: 5, time: 1200 }).then(res => {
+      if (token !== state.token) return;
+      state.busy = false;
+      const g = positionAt(ply);
+      const ex = res.results && res.results.length ? Coach.explainBest(g, res.results, res.threat, ply, state.lang, nl()) : null;
+      if (!ex) { state.strip = null; renderGame(); return; }
+      state.hint = { from: ex.from, to: ex.to };
+      state.strip = { kind: 'best', ex, keep: fromBlunder || 0, results: res.results, threat: res.threat, ply };
+      renderGame();
+    });
+  }
+
+  // Coach strip actions
+  $('coachStrip').addEventListener('click', e => {
+    const b = e.target.closest('[data-strip]');
+    if (!b) return;
+    const s = state.strip;
+    switch (b.dataset.strip) {
+      case 'takeback':
+        state.token++; state.busy = false; state.strip = null;
+        undoPlies(1); saveGame(); renderGame();
+        break;
+      case 'showbest': {
+        const m = s.move;
+        state.token++; state.busy = false;
+        undoPlies(1); saveGame();
+        requestBest(m);
+        break;
+      }
+      case 'keep':
+        state.strip = null;
+        if (s && s.kind === 'best' && s.keep) {
+          // Replay the move the player chose to keep, then let the robot answer.
+          state.hint = null;
+          applyMove(s.keep);
+          if (!state.over) robotTurn(); else renderGame();
+        } else if (!state.over) robotTurn();
+        break;
+      case 'play':
+        if (s && s.kind === 'best') humanMove(s.ex.move);
+        break;
+      case 'hide':
+        state.strip = null; state.hint = null; renderGame();
+        break;
+      case 'confirm':
+        if (state.pending) { const m = state.pending; state.strip = s.prev || null; humanMove(m); }
+        break;
+      case 'cancel':
+        state.pending = 0; state.hint = null; state.strip = s ? s.prev || null : null; renderGame();
+        break;
+    }
+  });
+
+  const LABEL_ICON = { great: '★', accurate: '✓', good: '•', blunder: '??' };
+
+  function renderStrip() {
+    const el = $('coachStrip'), s = state.strip;
+    if (!s) { el.hidden = true; el.innerHTML = ''; return; }
+    el.hidden = false;
+    el.className = 'coach-strip ' + s.kind + (s.label ? ' lbl-' + s.label : '');
+    let html = '';
+    switch (s.kind) {
+      case 'checking':
+        html = `<div class="strip-line pending">${esc(t('checkingMove'))}</div>`;
+        break;
+      case 'finding':
+        html = `<div class="strip-line pending">${esc(t('findingBest'))}</div>`;
+        break;
+      case 'label':
+        html = `<div class="strip-line"><span class="rate-pill r-${s.label}">${LABEL_ICON[s.label]} ${esc(t('lbl_' + s.label))}</span> <span class="strip-move">${esc(san(s.san))}</span></div>`;
+        break;
+      case 'blunder':
+        html = `<div class="strip-line"><span class="rate-pill r-blunder">${LABEL_ICON.blunder} ${esc(t('lbl_blunder'))}</span> ${esc(tf('blunderText', { move: san(s.san) }))}</div>
+          <div class="strip-actions">
+            <button type="button" class="btn small" data-strip="takeback">↶ ${esc(t('takeBack'))}</button>
+            <button type="button" class="btn small primary" data-strip="showbest">💡 ${esc(t('showBestMove'))}</button>
+            <button type="button" class="btn small" data-strip="keep">${esc(t('keepMyMove'))}</button>
+          </div>`;
+        break;
+      case 'best': {
+        const key = 'strip:' + state.moves.length;
+        const body = s.ex.sentences.map(x => renderTokens(x)).join(' ');
+        html = `<div class="strip-line"><b>${esc(t('bestMoveIs'))}</b> <span class="strip-move">${esc(san(s.ex.san))}</span></div>
+          <div class="cpara" data-key="${key}"><p>${body}</p><div class="term-slot">${slotHTML(key)}</div></div>
+          <div class="strip-actions">
+            <button type="button" class="btn small primary" data-strip="play">▶ ${esc(t('playIt'))}</button>
+            ${s.keep ? `<button type="button" class="btn small" data-strip="keep">${esc(t('keepMyMove'))}</button>`
+              : `<button type="button" class="btn small" data-strip="hide">${esc(t('close'))}</button>`}
+          </div>`;
+        break;
+      }
+      case 'confirm': {
+        const g = state.game;
+        const sn = g.san(s.move, g.moves());
+        html = `<div class="strip-line">${esc(tf('confirmMove', { move: san(sn) }))}</div>
+          <div class="strip-actions">
+            <button type="button" class="btn small primary" data-strip="confirm">✓ ${esc(t('confirm'))}</button>
+            <button type="button" class="btn small" data-strip="cancel">✕ ${esc(t('cancel'))}</button>
+          </div>`;
+        break;
+      }
+    }
+    el.innerHTML = html;
+    syncTermButtons(el);
+  }
+
+  // ---------------------------------------------------------------- glossary terms
   function termHTML(id, text) {
     return `<span class="term"><span class="term-name">${esc(text)}</span><button type="button" class="term-btn" data-term="${id}" aria-expanded="false" aria-label="${esc(text)}: ▼">▼</button></span>`;
   }
@@ -497,15 +989,16 @@
     });
   }
 
+  const CAT_KEY = { tactic: 'catTactic', rule: 'catRule', principle: 'catPrinciple', opening: 'catOpening', rating: 'catRating' };
+
   function explanationHTML(id, key) {
     const term = TERMS[id];
     if (!term) return '';
     const L = term[state.lang];
-    const catKey = { tactic: 'catTactic', rule: 'catRule', principle: 'catPrinciple', opening: 'catOpening', rating: 'catRating' }[term.cat];
     const demoKey = key + '|' + id;
     const demoOpen = state.openDemos.has(demoKey);
     return `<div class="explain" data-term="${id}">
-      <div class="explain-head"><span class="explain-title">${esc(cap(L.n))}</span><span class="chip ${term.cat}">${esc(t(catKey))}</span></div>
+      <div class="explain-head"><span class="explain-title">${esc(cap(L.n))}</span><span class="chip ${term.cat}">${esc(t(CAT_KEY[term.cat]))}</span></div>
       <p>${esc(L.d)}</p>
       <p><b>${esc(t('why'))}</b> ${esc(L.w)}</p>
       <p><b>${esc(t('example'))}</b> ${esc(L.x)}</p>
@@ -539,49 +1032,6 @@
     return `<div class="mini-board"><div class="grid">${cells}</div><svg class="arrows" viewBox="0 0 800 800">${arrowSVG(arrows, false, 800)}</svg></div>`;
   }
 
-  function paraHTML(key, html) {
-    return `<div class="cpara" data-key="${key}"><p>${html}</p><div class="term-slot">${slotHTML(key)}</div></div>`;
-  }
-
-  function moveLabel(ply) {
-    const n = Math.floor(ply / 2) + 1;
-    return ply % 2 === 0 ? `${n}.` : `${n}...`;
-  }
-
-  function entryHTML(e, isLatest) {
-    if (e.kind === 'info') {
-      return `<div class="centry info"><div class="cav">🎓</div><div class="cbody"><p>${esc(t(e.key))}</p></div></div>`;
-    }
-    if (e.kind === 'pending') {
-      return `<div class="centry user"><div class="cav">🧑</div><div class="cbody"><div class="pending">${esc(t('analyzing'))}</div></div></div>`;
-    }
-    const paras = Coach.paragraphs(e.data, state.lang);
-    const who = e.kind === 'user' ? t('you') : t('computer');
-    let body = paras.map((p, i) => paraHTML(`${e.id}:${i}`, renderTokens(p))).join('');
-    if (e.kind === 'user') {
-      const showing = state.hint && state.hint.entry === e.id;
-      body += '<div class="cactions">';
-      if (e.data.bestMove) {
-        body += `<button type="button" class="btn small${showing ? ' active' : ''}" data-act="show" data-entry="${e.id}">👁 ${esc(t(showing ? 'hideHint' : 'showMe'))}</button>`;
-      }
-      body += `<button type="button" class="btn small" data-act="takeback" data-entry="${e.id}">↶ ${esc(t('takeBack'))}</button></div>`;
-    }
-    return `<div class="centry ${e.kind}${isLatest ? ' latest' : ''}">
-      <div class="cav">${e.kind === 'user' ? '🧑' : '🤖'}</div>
-      <div class="cbody"><div class="chead"><span class="who">${esc(who)}</span><span>${moveLabel(e.ply)} ${esc(localizeSan(state.sans[e.ply] || '', state.lang))}</span></div>${body}</div>
-    </div>`;
-  }
-
-  function renderCoach() {
-    const card = $('coachCard');
-    card.hidden = state.mode !== 'learn';
-    if (card.hidden) return;
-    const list = state.coach.slice().reverse();
-    const latestId = list.length ? list[0].id : -1;
-    $('coachLog').innerHTML = list.map(e => entryHTML(e, e.id === latestId && e.kind !== 'info')).join('');
-    syncTermButtons($('coachLog'));
-  }
-
   function syncTermButtons(root) {
     root.querySelectorAll('[data-key]').forEach(p => {
       const open = state.openTerms.get(p.dataset.key) || [];
@@ -593,7 +1043,7 @@
     });
   }
 
-  // Term dropdown + demo toggles (coach panel and glossary).
+  // Term dropdowns and demo toggles (coach strip and glossary).
   document.addEventListener('click', e => {
     const tb = e.target.closest('.term-btn, .gl-head');
     if (tb) {
@@ -616,60 +1066,51 @@
       if (state.openDemos.has(k)) state.openDemos.delete(k); else state.openDemos.add(k);
       const para = db.closest('[data-key]');
       para.querySelector('.term-slot').innerHTML = slotHTML(para.dataset.key);
-      return;
-    }
-    const act = e.target.closest('[data-act]');
-    if (act) {
-      const entry = state.coach.find(x => x.id === +act.dataset.entry);
-      if (!entry) return;
-      if (act.dataset.act === 'show') {
-        state.hint = state.hint && state.hint.entry === entry.id ? null :
-          { from: entry.data.bestMove.from, to: entry.data.bestMove.to, entry: entry.id };
-        renderBoard();
-        renderCoach();
-      } else if (act.dataset.act === 'takeback') {
-        takeBackTo(entry.ply);
-      }
     }
   });
 
-  // ---------------------------------------------------------------- side panels
-  function renderStatus() {
-    const g = state.game, st = $('status');
-    let text;
-    st.classList.remove('thinking');
-    if (state.over) {
-      const o = state.over;
-      if (o.reason === 'checkmate') {
-        if (isComputerGame()) text = o.winner === state.humanColor ? t('youWin') : t('youLose');
-        else text = t('checkmateWin').replace('{side}', o.winner === WHITE ? t('whiteSide') : t('blackSide'));
-      } else text = t(o.reason);
-    } else if (state.busy && state.mode === 'learn' && isHumanTurn() === false && state.coach.some(e => e.kind === 'pending')) {
-      text = t('analyzing'); st.classList.add('thinking');
-    } else if (state.busy) {
-      text = t('thinking'); st.classList.add('thinking');
-    } else {
-      text = isComputerGame() ? t('yourTurn') : (g.turn === WHITE ? t('whiteToMove') : t('blackToMove'));
-      if (g.inCheck()) text += ' — ' + t('check');
+  // ---------------------------------------------------------------- game screen
+  function statusText() {
+    const g = state.game, o = state.over;
+    if (o) {
+      const vsRobot = isRobotGame();
+      switch (o.reason) {
+        case 'checkmate':
+          return vsRobot ? t(o.winner === state.humanColor ? 'youWin' : 'youLose') :
+            t('checkmateWin').replace('{side}', o.winner === WHITE ? t('whiteSide') : t('blackSide'));
+        case 'resign':
+          return vsRobot ? t('youResigned') : tf('resignedPvp', { loser: sideName(o.loser), winner: sideName(o.winner) });
+        case 'timeout':
+          if (vsRobot) return t(o.winner === state.humanColor ? 'robotTimeout' : 'youTimeout');
+          return tf('timeoutPvp', { loser: sideName(o.loser), winner: sideName(o.winner) });
+        default:
+          return t(o.reason);
+      }
     }
-    st.textContent = text;
-    const dot = $('turnDot');
-    dot.className = 'turn-dot ' + (g.turn === WHITE ? 'w' : 'b');
-    let info = t(state.mode === 'pvp' ? 'modePvp' : state.mode === 'cpu' ? 'modeCpu' : 'modeLearn');
-    if (isComputerGame()) info += ` · ${t(LEVEL_KEY[state.level])} · ${t('playAs')}: ${colorName(state.humanColor)}`;
-    $('modeInfo').textContent = info;
+    if (state.busy && state.strip && (state.strip.kind === 'checking' || state.strip.kind === 'finding')) return t('coachThinking');
+    if (state.busy) return isRobotGame() && !isHumanTurn() ? t('thinking') : t('pleaseWait');
+    let text = isRobotGame() ? t('yourTurn') : (g.turn === WHITE ? t('whiteToMove') : t('blackToMove'));
+    if (g.inCheck()) text += ' — ' + t('check');
+    return text;
+  }
+
+  function renderStatus() {
+    const st = $('status');
+    st.textContent = statusText();
+    st.classList.toggle('thinking', !!state.busy && !state.over);
+    $('turnDot').className = 'turn-dot ' + (state.game.turn === WHITE ? 'w' : 'b');
   }
 
   function renderMoves() {
     const el = $('moveList');
     if (!state.sans.length) { el.innerHTML = `<p class="empty">${esc(t('noMoves'))}</p>`; return; }
     let html = '';
+    const cur = state.sans.length - 1;
     for (let i = 0; i < state.sans.length; i += 2) {
       const w = state.sans[i], b = state.sans[i + 1];
-      const cur = state.sans.length - 1;
       html += `<div class="mrow"><span class="num">${i / 2 + 1}.</span>` +
-        `<span class="mv${cur === i ? ' cur' : ''}">${esc(localizeSan(w, state.lang))}</span>` +
-        `<span class="mv${cur === i + 1 ? ' cur' : ''}">${b ? esc(localizeSan(b, state.lang)) : ''}</span></div>`;
+        `<span class="mv${cur === i ? ' cur' : ''}">${esc(san(w))}</span>` +
+        `<span class="mv${cur === i + 1 ? ' cur' : ''}">${b ? esc(san(b)) : ''}</span></div>`;
     }
     el.innerHTML = html;
     el.scrollTop = el.scrollHeight;
@@ -680,138 +1121,249 @@
     // Pieces captured BY each colour, from the move history.
     const taken = { [WHITE]: [], [BLACK]: [] };
     for (const h of g.hist) if (h.cap) taken[(h.cap & BLACK) ^ BLACK].push(h.cap);
-    let mat = { [WHITE]: 0, [BLACK]: 0 };
+    const mat = { [WHITE]: 0, [BLACK]: 0 };
     for (let sq = 0; sq < 128; sq++) {
       if (sq & 0x88) { sq += 7; continue; }
       const p = g.board[sq];
       if (p) mat[p & BLACK] += VAL[p & 7];
     }
     const bar = color => {
-      let name;
-      if (isComputerGame()) {
-        name = color === state.humanColor ? t('you') : `${t('computer')} · ${t(LEVEL_KEY[state.level])}`;
-      } else name = colorName(color);
+      const name = isRobotGame() ? (color === state.humanColor ? t('you') : `${t('robot')} · ${t(LEVEL_KEY[state.level])}`) : colorName(color);
       const caps = taken[color].slice().sort((a, b) => VAL[b & 7] - VAL[a & 7])
         .map(p => `<span class="piece cap ${p & BLACK ? 'b' : 'w'}${PIECE_CODE[p & 7]}"></span>`).join('');
       const adv = mat[color] - mat[color ^ BLACK];
-      const active = !state.over && g.turn === color;
+      const clock = state.clock ? `<span class="clock" data-side="${sideKey(color)}"></span>` : '';
       return { html: `<span class="player-name"><span class="swatch ${color === WHITE ? 'w' : 'b'}"></span>${esc(name)}</span>` +
-        `<span class="captured" aria-label="${esc(t('captured'))}">${caps}${adv > 0 ? `<span class="adv">+${adv}</span>` : ''}</span>`, active };
+        `<span class="captured" aria-label="${esc(t('captured'))}">${caps}${adv > 0 ? `<span class="adv">+${adv}</span>` : ''}</span>${clock}`,
+      active: !state.over && g.turn === color };
     };
     const bottomColor = state.flipped ? BLACK : WHITE;
     const top = bar(bottomColor ^ BLACK), bottom = bar(bottomColor);
     $('barTop').innerHTML = top.html; $('barTop').classList.toggle('active', top.active);
     $('barBottom').innerHTML = bottom.html; $('barBottom').classList.toggle('active', bottom.active);
+    updateClocks();
   }
 
   function renderControls() {
-    const undoBtn = $('btnUndo');
-    let can = state.moves.length > 0;
-    if (isComputerGame() && can) {
-      // Need at least one human move to take back.
-      const firstHumanPly = state.humanColor === WHITE ? 0 : 1;
-      can = state.moves.length > firstHumanPly || state.busy;
-    }
-    undoBtn.disabled = !can;
+    $('btnUndo').disabled = !canUndo();
+    const coach = state.mode === 'learn';
+    $('btnBest').hidden = !coach;
+    $('btnBest').disabled = !coach || state.busy || !!state.over || !isHumanTurn() || !!state.pending ||
+      (state.strip && (state.strip.kind === 'blunder' || state.strip.kind === 'best'));
+    document.querySelector('#moreMenu [data-act="draw"]').disabled = !!state.over || state.busy || !state.moves.length;
+    document.querySelector('#moreMenu [data-act="resign"]').disabled = !!state.over || !state.moves.length;
   }
 
-  function renderAll() {
+  function renderGame() {
+    if (state.screen !== 'game') return;
     renderBoard();
     renderStatus();
     renderBars();
     renderMoves();
-    renderCoach();
+    renderStrip();
     renderControls();
   }
 
+  $('btnUndo').addEventListener('click', undo);
+  $('btnFlip').addEventListener('click', () => { state.flipped = !state.flipped; renderBoard(); renderBars(); });
+  $('btnBest').addEventListener('click', () => requestBest(0));
+
+  function closeMore() { $('moreMenu').hidden = true; $('btnMore').setAttribute('aria-expanded', 'false'); }
+  $('btnMore').addEventListener('click', e => {
+    e.stopPropagation();
+    const open = $('moreMenu').hidden;
+    $('moreMenu').hidden = !open;
+    $('btnMore').setAttribute('aria-expanded', String(open));
+  });
+  document.addEventListener('click', e => { if (!e.target.closest('.more-wrap')) closeMore(); });
+  $('moreMenu').addEventListener('click', e => {
+    const b = e.target.closest('[data-act]');
+    if (!b || b.disabled) return;
+    closeMore();
+    if (b.dataset.act === 'new') {
+      const mode = state.mode;
+      const again = () => { discardSaved(); startGameAgain(mode); };
+      if (gameInProgress()) ask('newGameTitle', t('newGameText'), [{ key: 'newGame', cls: 'primary', fn: again }, { key: 'cancel' }]);
+      else again();
+    } else if (b.dataset.act === 'resign') {
+      ask('resignTitle', '', [{ key: 'resign', cls: 'danger', fn: resign }, { key: 'cancel' }]);
+    } else if (b.dataset.act === 'draw') {
+      offerDraw();
+    }
+  });
+  function startGameAgain(mode) {
+    // Same mode and settings, without stacking another history entry.
+    history.replaceState({ s: 'game' }, '');
+    newGameState(mode);
+    if (mode !== 'pvp') {
+      const c = robotSetup.color;
+      state.level = robotSetup.level;
+      state.humanColor = c === 'b' ? BLACK : c === 'r' ? (Math.random() < 0.5 ? WHITE : BLACK) : WHITE;
+    } else state.humanColor = WHITE;
+    state.flipped = state.humanColor === BLACK;
+    renderGame();
+    resumeClock();
+    if (isRobotGame() && state.game.turn !== state.humanColor) robotTurn();
+  }
+
+  // ---------------------------------------------------------------- menu & setup
+  function renderMenu() {
+    const live = state.mode && gameInProgress();
+    const s = live ? null : savedGame();
+    const resumable = live || !!s;
+    $('btnResume').hidden = !resumable;
+    if (resumable) {
+      const mode = live ? state.mode : s.mode, n = live ? state.moves.length : s.moves.length;
+      $('resumeInfo').textContent = `${t(modeKey(mode))} · ${tf('moveN', { n: Math.ceil(n / 2) })}`;
+    }
+  }
+  const modeKey = m => m === 'pvp' ? 'vsFriend' : m === 'cpu' ? 'modeAlone' : 'modeCoach';
+
+  function renderSetup() {
+    $('setupTitle').textContent = t(state.setupMode === 'learn' ? 'modeCoach' : 'modeAlone');
+    document.querySelectorAll('#levelOptions button').forEach(b => b.classList.toggle('selected', b.dataset.level === robotSetup.level));
+    document.querySelectorAll('#colorOptions button').forEach(b => b.classList.toggle('selected', b.dataset.color === robotSetup.color));
+    $('levelDesc').textContent = t(LEVEL_KEY[robotSetup.level] + 'Desc');
+    const cfg = clockConfig(state.setupMode);
+    $('setupClockNote').textContent = state.setupMode === 'learn' ? t('clockNoteCoach') :
+      cfg ? tf('clockNoteOn', { tc: `${cfg.base}+${cfg.inc}` }) : t('clockNoteOff');
+  }
+  $('levelOptions').addEventListener('click', e => {
+    const b = e.target.closest('[data-level]');
+    if (b) { robotSetup.level = b.dataset.level; store.set('robotSetup', robotSetup); renderSetup(); }
+  });
+  $('colorOptions').addEventListener('click', e => {
+    const b = e.target.closest('[data-color]');
+    if (b) { robotSetup.color = b.dataset.color; store.set('robotSetup', robotSetup); renderSetup(); }
+  });
+  $('btnStart').addEventListener('click', () => confirmNewGame(() => startGame(state.setupMode)));
+
+  // ---------------------------------------------------------------- settings screen
+  function seg(name, options, current) {
+    return `<div class="seg" data-setting="${name}">` + options.map(([v, label, extra]) =>
+      `<button type="button" data-value="${esc(String(v))}" class="${String(v) === String(current) ? 'selected' : ''}">${extra || ''}${esc(label)}</button>`).join('') + '</div>';
+  }
+  function toggle(name, labelKey) {
+    return `<label class="switch-row"><span>${esc(t(labelKey))}</span>
+      <input type="checkbox" data-toggle="${name}" ${settings[name] ? 'checked' : ''}><span class="switch" aria-hidden="true"></span></label>`;
+  }
+
+  function renderSettings() {
+    const c = settings.clock;
+    const cur = !c ? 'off' : CLOCK_PRESETS.some(([b, i]) => b === c.base && i === c.inc) && !settings.clockCustom ? `${c.base}+${c.inc}` : 'custom';
+    const clockOpts = [['off', t('clockOff')], ...CLOCK_PRESETS.map(([b, i]) => [`${b}+${i}`, `${b}+${i}`]), ['custom', t('clockCustom')]];
+    const themes = [['brown', t('boardBrown')], ['green', t('boardGreen')], ['blue', t('boardBlue')], ['gray', t('boardGray')]]
+      .map(([v, l]) => [v, l, `<span class="board-swatch b-${v}" aria-hidden="true"></span>`]);
+    $('settingsBody').innerHTML = `
+      <section class="set-group">
+        <h3>⏱ ${esc(t('secClock'))}</h3>
+        ${seg('clock', clockOpts, cur)}
+        <div class="custom-clock" ${cur === 'custom' ? '' : 'hidden'}>
+          <label>${esc(t('minutes'))} <input type="number" min="1" max="180" step="1" id="clockBase" value="${c ? c.base : 10}"></label>
+          <label>${esc(t('increment'))} <input type="number" min="0" max="60" step="1" id="clockInc" value="${c ? c.inc : 0}"></label>
+        </div>
+        <p class="hint-text">${esc(t('clockApplies'))}</p>
+      </section>
+      <section class="set-group">
+        <h3>♟ ${esc(t('secBoard'))}</h3>
+        <div class="field-label">${esc(t('boardColors'))}</div>
+        ${seg('boardTheme', themes, settings.boardTheme)}
+        ${toggle('coords', 'optCoords')}
+        ${toggle('showLegal', 'optLegal')}
+        ${toggle('showLast', 'optLast')}
+        ${toggle('autoQueen', 'optAutoQueen')}
+        ${toggle('confirmTouch', 'optConfirm')}
+        ${toggle('autoFlip', 'optAutoFlip')}
+      </section>
+      <section class="set-group">
+        <h3>⚙ ${esc(t('secGeneral'))}</h3>
+        ${toggle('sound', 'optSound')}
+        <div class="field-label">${esc(t('interfaceLang'))}</div>
+        ${seg('lang', [['en', 'English'], ['es', 'Español']], state.lang)}
+        <div class="field-label">${esc(t('notationLang'))}</div>
+        ${seg('notation', [['auto', t('notationAuto')], ['en', 'English (K Q R B N)'], ['es', 'Español (R D T A C)']], settings.notation)}
+        <div class="field-label">${esc(t('themeLabel'))}</div>
+        ${seg('theme', [['system', t('themeSystem')], ['light', '☀ ' + t('themeLight')], ['dark', '☾ ' + t('themeDark')]], settings.theme)}
+        <button type="button" class="btn danger" id="btnResetSettings">${esc(t('resetSettings'))}</button>
+      </section>`;
+  }
+
+  $('settingsBody').addEventListener('click', e => {
+    const b = e.target.closest('.seg[data-setting] button');
+    if (b) {
+      const name = b.parentElement.dataset.setting, v = b.dataset.value;
+      if (name === 'clock') {
+        if (v === 'off') { settings.clock = null; settings.clockCustom = false; }
+        else if (v === 'custom') { settings.clockCustom = true; settings.clock = settings.clock || { base: 10, inc: 0 }; }
+        else { const [base, inc] = v.split('+').map(Number); settings.clock = { base, inc }; settings.clockCustom = false; }
+      } else if (name === 'lang') {
+        setLang(v);
+      } else {
+        settings[name] = v;
+      }
+      saveSettings();
+      applyTheme();
+      renderSettings();
+      return;
+    }
+    if (e.target.id === 'btnResetSettings') {
+      ask('resetSettingsTitle', t('resetSettingsText'), [
+        { key: 'resetSettings', cls: 'danger', fn: () => {
+          Object.keys(settings).forEach(k => delete settings[k]);
+          Object.assign(settings, DEFAULT_SETTINGS);
+          saveSettings(); applyTheme(); Sound.setEnabled(settings.sound); renderSettings(); toast('settingsReset');
+        } },
+        { key: 'cancel' }
+      ]);
+    }
+  });
+  $('settingsBody').addEventListener('change', e => {
+    const tg = e.target.dataset.toggle;
+    if (tg) {
+      settings[tg] = e.target.checked;
+      if (tg === 'sound') Sound.setEnabled(settings.sound);
+      saveSettings();
+      return;
+    }
+    if (e.target.id === 'clockBase' || e.target.id === 'clockInc') {
+      const base = Math.min(180, Math.max(1, parseInt($('clockBase').value, 10) || 10));
+      const inc = Math.min(60, Math.max(0, parseInt($('clockInc').value, 10) || 0));
+      settings.clock = { base, inc };
+      settings.clockCustom = true;
+      saveSettings();
+      renderSettings();
+    }
+  });
+
   // ---------------------------------------------------------------- language
+  function setLang(l) {
+    state.lang = l;
+    store.set('lang', l);
+    applyLanguage();
+  }
   function applyLanguage() {
     document.documentElement.lang = state.lang;
     document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
-    document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
     document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => { el.placeholder = t(el.dataset.i18nPlaceholder); });
     document.title = t('appTitle');
     $('langToggle').setAttribute('aria-checked', state.lang === 'es');
-    renderSetup();
-    renderAll();
-    if (!$('glossaryModal').hidden) renderGlossary();
-    if (!$('statsModal').hidden) renderStats();
+    renderScreen();
     renderFacts();
     renderInstall();
   }
-
-  $('langToggle').addEventListener('click', () => {
-    state.lang = state.lang === 'en' ? 'es' : 'en';
-    store.set('lang', state.lang);
-    applyLanguage();
-  });
-
-  // ---------------------------------------------------------------- modals
-  let lastFocus = null;
-  function openModal(id) {
-    // Only one dialog at a time (the header stays clickable above them).
-    document.querySelectorAll('.modal').forEach(m => { if (m.id !== id && !m.hidden) m.hidden = true; });
-    if ($(id).hidden) lastFocus = document.activeElement;
-    $(id).hidden = false;
-    const f = $(id).querySelector('.selected, button, input');
-    if (f) setTimeout(() => f.focus(), 0);
-  }
-  function closeModal(id) {
-    $(id).hidden = true;
-    if (id === 'promoModal') deselect();
-    if (lastFocus && lastFocus.focus) lastFocus.focus();
-  }
-  document.querySelectorAll('.modal').forEach(m => {
-    m.addEventListener('click', e => {
-      if (e.target === m || e.target.closest('[data-close]')) closeModal(m.id);
-    });
-  });
-  document.addEventListener('keydown', e => {
-    if (e.key !== 'Escape') return;
-    const open = Array.from(document.querySelectorAll('.modal')).find(m => !m.hidden);
-    if (open) closeModal(open.id);
-  });
-
-  // New game setup
-  const setup = { mode: state.mode, level: state.level, color: state.colorChoice };
-  function renderSetup() {
-    document.querySelectorAll('#modeOptions .mode-card').forEach(b => b.classList.toggle('selected', b.dataset.mode === setup.mode));
-    document.querySelectorAll('#levelOptions button').forEach(b => b.classList.toggle('selected', b.dataset.level === setup.level));
-    document.querySelectorAll('#colorOptions button').forEach(b => b.classList.toggle('selected', b.dataset.color === setup.color));
-    $('levelField').hidden = setup.mode === 'pvp';
-    $('colorField').hidden = setup.mode === 'pvp';
-    $('levelDesc').textContent = t(LEVEL_KEY[setup.level] + 'Desc');
-  }
-  $('modeOptions').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (b) { setup.mode = b.dataset.mode; renderSetup(); } });
-  $('levelOptions').addEventListener('click', e => { const b = e.target.closest('[data-level]'); if (b) { setup.level = b.dataset.level; renderSetup(); } });
-  $('colorOptions').addEventListener('click', e => { const b = e.target.closest('[data-color]'); if (b) { setup.color = b.dataset.color; renderSetup(); } });
-  $('btnStart').addEventListener('click', () => {
-    state.mode = setup.mode; state.level = setup.level; state.colorChoice = setup.color;
-    store.set('mode', state.mode); store.set('level', state.level); store.set('color', state.colorChoice);
-    closeModal('newGameModal');
-    newGame();
-  });
-  $('btnNew').addEventListener('click', () => {
-    setup.mode = state.mode; setup.level = state.level; setup.color = state.colorChoice;
-    renderSetup();
-    nextFact();
-    openModal('newGameModal');
-  });
-  $('btnUndo').addEventListener('click', undo);
-  $('btnFlip').addEventListener('click', () => { state.flipped = !state.flipped; renderBoard(); renderBars(); });
+  $('langToggle').addEventListener('click', () => setLang(state.lang === 'en' ? 'es' : 'en'));
 
   // ---------------------------------------------------------------- statistics
-  // Each finished game is stored as one small record in localStorage.
   function loadStats() {
     const list = store.get('stats', []);
     return Array.isArray(list) ? list : [];
   }
 
   function recordGame(over) {
-    const winner = over.reason === 'checkmate' ? over.winner : null;
+    const winner = over.winner === WHITE || over.winner === BLACK ? over.winner : null;
     const rec = { mode: state.mode, reason: over.reason, plies: state.moves.length, date: Date.now() };
-    if (isComputerGame()) {
+    if (isRobotGame()) {
       rec.level = state.level;
       rec.color = state.humanColor === WHITE ? 'w' : 'b';
       rec.result = winner === null ? 'draw' : winner === state.humanColor ? 'win' : 'loss';
@@ -823,7 +1375,6 @@
     store.set('stats', list);
   }
 
-  state.statsColor = 'all';
   function tally(records) {
     const r = { played: records.length, win: 0, loss: 0, draw: 0, white: 0, black: 0 };
     for (const x of records) r[x.result] = (r[x.result] || 0) + 1;
@@ -840,26 +1391,27 @@
   function resultHead(first) {
     return `<tr><th>${esc(first)}</th><th>${esc(t('played'))}</th><th>${esc(t('wins'))}</th><th>${esc(t('losses'))}</th><th>${esc(t('draws'))}</th><th>${esc(t('winPct'))}</th></tr>`;
   }
+  const tile = (k, v) => `<div class="stat-tile"><div class="v">${v}</div><div class="k">${esc(t(k))}</div></div>`;
 
   function renderStats() {
     document.querySelectorAll('#statsColor button').forEach(b => b.classList.toggle('selected', b.dataset.scolor === state.statsColor));
     const all = loadStats();
-    const vsCpu = all.filter(x => x.mode === 'cpu' || x.mode === 'learn');
-    const shown = state.statsColor === 'all' ? vsCpu : vsCpu.filter(x => x.color === state.statsColor);
+    const coach = Object.assign({ great: 0, accurate: 0, good: 0, blunder: 0, bestUsed: 0 }, store.get('coachStats', {}));
+    const coachTotal = coach.great + coach.accurate + coach.good + coach.blunder;
+    const vsRobot = all.filter(x => x.mode === 'cpu' || x.mode === 'learn');
+    const shown = state.statsColor === 'all' ? vsRobot : vsRobot.filter(x => x.color === state.statsColor);
     const body = $('statsBody');
-    $('btnResetStats').disabled = !all.length;
-    if (!all.length) { body.innerHTML = `<p class="empty">${esc(t('statsEmpty'))}</p>`; return; }
+    $('btnResetStats').disabled = !all.length && !coachTotal && !coach.bestUsed;
+    if (!all.length && !coachTotal && !coach.bestUsed) { body.innerHTML = `<p class="empty">${esc(t('statsEmpty'))}</p>`; return; }
 
     const o = tally(shown);
     let html = `<div class="stats-section"><h3>${esc(t('overall'))}</h3><div class="stats-summary">` +
-      [['played', o.played], ['wins', o.win], ['losses', o.loss], ['draws', o.draw],
-        ['winPct', o.played ? Math.round(o.win / o.played * 100) + '%' : '—']]
-        .map(([k, v]) => `<div class="stat-tile"><div class="v">${v}</div><div class="k">${esc(t(k))}</div></div>`).join('') +
-      '</div></div>';
+      tile('played', o.played) + tile('wins', o.win) + tile('losses', o.loss) + tile('draws', o.draw) +
+      tile('winPct', o.played ? Math.round(o.win / o.played * 100) + '%' : '—') + '</div></div>';
 
     for (const mode of ['cpu', 'learn']) {
       const recs = shown.filter(x => x.mode === mode);
-      html += `<div class="stats-section"><h3>${esc(t(mode === 'cpu' ? 'modeCpu' : 'modeLearn'))}</h3><div class="table-scroll"><table class="stats-table">` +
+      html += `<div class="stats-section"><h3>${esc(t(modeKey(mode)))}</h3><div class="table-scroll"><table class="stats-table">` +
         resultHead(t('level')) +
         LEVELS.map(l => resultRow(esc(t(LEVEL_KEY[l])), tally(recs.filter(x => x.level === l)))).join('') +
         resultRow(esc(t('total')), tally(recs), 'total') + '</table></div></div>';
@@ -867,43 +1419,35 @@
 
     html += `<div class="stats-section"><h3>${esc(t('byColor'))}</h3><div class="table-scroll"><table class="stats-table">` +
       resultHead(t('playAs')) +
-      resultRow(`<span class="swatch w"></span> ${esc(t('white'))}`, tally(vsCpu.filter(x => x.color === 'w'))) +
-      resultRow(`<span class="swatch b"></span> ${esc(t('black'))}`, tally(vsCpu.filter(x => x.color === 'b'))) +
+      resultRow(`<span class="swatch w"></span> ${esc(t('white'))}`, tally(vsRobot.filter(x => x.color === 'w'))) +
+      resultRow(`<span class="swatch b"></span> ${esc(t('black'))}`, tally(vsRobot.filter(x => x.color === 'b'))) +
       '</table></div></div>';
 
+    html += `<div class="stats-section"><h3>${esc(t('coachCounts'))}</h3><div class="stats-summary">` +
+      tile('lbl_great', coach.great) + tile('lbl_accurate', coach.accurate) + tile('lbl_good', coach.good) +
+      tile('lbl_blunder', coach.blunder) + tile('bestUsedCount', coach.bestUsed) + '</div></div>';
+
     const pvp = tally(all.filter(x => x.mode === 'pvp'));
-    html += `<div class="stats-section"><h3>${esc(t('pvpStats'))}</h3><div class="table-scroll"><table class="stats-table">` +
+    html += `<div class="stats-section"><h3>${esc(t('vsFriend'))}</h3><div class="table-scroll"><table class="stats-table">` +
       `<tr><th>${esc(t('played'))}</th><th>${esc(t('whiteWins'))}</th><th>${esc(t('blackWins'))}</th><th>${esc(t('draws'))}</th></tr>` +
       `<tr><td>${pvp.played}</td><td>${pvp.white}</td><td>${pvp.black}</td><td>${pvp.draw}</td></tr></table></div></div>`;
     body.innerHTML = html;
   }
 
-  $('btnStats').addEventListener('click', () => {
-    $('resetConfirm').hidden = true; $('resetDone').hidden = true; $('btnResetStats').hidden = false;
-    renderStats();
-    openModal('statsModal');
-  });
   $('statsColor').addEventListener('click', e => {
     const b = e.target.closest('[data-scolor]');
     if (b) { state.statsColor = b.dataset.scolor; renderStats(); }
   });
   $('btnResetStats').addEventListener('click', () => {
-    $('resetConfirm').hidden = false; $('btnResetStats').hidden = true; $('resetDone').hidden = true;
-    $('btnResetNo').focus();
-  });
-  $('btnResetNo').addEventListener('click', () => {
-    $('resetConfirm').hidden = true; $('btnResetStats').hidden = false;
-  });
-  $('btnResetYes').addEventListener('click', () => {
-    store.set('stats', []);
-    $('resetConfirm').hidden = true; $('btnResetStats').hidden = false; $('resetDone').hidden = false;
-    renderStats();
+    ask('resetStatsTitle', t('resetConfirm'), [
+      { key: 'resetYes', cls: 'danger', fn: () => { store.set('stats', []); store.remove('coachStats'); renderStats(); toast('resetDone'); } },
+      { key: 'cancel' }
+    ]);
   });
 
   // ---------------------------------------------------------------- did you know?
   // Facts are dealt from a shuffled deck (kept in localStorage), so none
   // repeats until every fact has been shown.
-  state.factIdx = -1;
   function nextFact() {
     let deck = store.get('factDeck', []);
     deck = Array.isArray(deck) ? deck.filter(i => Number.isInteger(i) && i >= 0 && i < FACTS.length) : [];
@@ -926,14 +1470,13 @@
   }
   document.addEventListener('click', e => { if (e.target.closest('[data-next-fact]')) nextFact(); });
 
-  // Glossary
+  // ---------------------------------------------------------------- glossary
   const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   function renderGlossary() {
     const q = norm($('glossarySearch').value.trim());
     const items = Object.keys(TERMS).map(id => ({ id, name: cap(TERMS[id][state.lang].n) }))
       .filter(x => !q || norm(x.name).includes(q) || norm(TERMS[x.id][state.lang].d).includes(q))
       .sort((a, b) => a.name.localeCompare(b.name, state.lang, { sensitivity: 'base' }));
-    const catKey = { tactic: 'catTactic', rule: 'catRule', principle: 'catPrinciple', opening: 'catOpening', rating: 'catRating' };
     let html = '', letter = '';
     for (const it of items) {
       const l = norm(it.name).charAt(0).toUpperCase();
@@ -941,14 +1484,13 @@
       const key = 'g:' + it.id, cat = TERMS[it.id].cat;
       const open = (state.openTerms.get(key) || []).includes(it.id);
       html += `<div class="gl-item" data-key="${key}">
-        <div class="gl-head"><span class="gl-name">${esc(it.name)}</span><span class="chip ${cat}">${esc(t(catKey[cat]))}</span>
+        <div class="gl-head"><span class="gl-name">${esc(it.name)}</span><span class="chip ${cat}">${esc(t(CAT_KEY[cat]))}</span>
         <button type="button" class="term-btn${open ? ' open' : ''}" data-term="${it.id}" aria-expanded="${open}" aria-label="${esc(it.name)}">▼</button></div>
         <div class="term-slot">${slotHTML(key)}</div></div>`;
     }
     $('glossaryList').innerHTML = html;
   }
   $('glossarySearch').addEventListener('input', renderGlossary);
-  $('btnGlossary').addEventListener('click', () => { renderGlossary(); openModal('glossaryModal'); });
 
   // ---------------------------------------------------------------- install & offline
   // A service worker stores the app for offline play. It needs http(s), so
@@ -984,12 +1526,10 @@
     const steps = isIOS ? ['iosStep1', 'iosStep2', 'iosStep3'] : isMacSafari ? ['macStep1', 'macStep2'] :
       isAndroid ? ['androidStep1', 'androidStep2'] : ['otherStep1', 'otherStep2', 'otherStep3'];
     $('installSteps').innerHTML = steps.map(k => `<li>${esc(t(k))}</li>`).join('');
-    // Re-translate a visible notice when the language changes.
     if (!$('toast').hidden && $('toast').dataset.key) $('toastText').textContent = t($('toast').dataset.key);
     if ($('toastAction').dataset.key) $('toastAction').textContent = t($('toastAction').dataset.key);
   }
 
-  // Chrome, Edge and Android browsers offer a native install prompt.
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     installPrompt = e;
@@ -1008,33 +1548,31 @@
       p.prompt();
       try { await p.userChoice; } catch (e) { /* ignore */ }
     } else {
-      // Safari (iPhone, iPad, Mac) and others: show how to install by hand.
       renderInstall();
       openModal('installModal');
     }
   });
-  // Don't cover a pending "new version — Reload" notice.
   window.addEventListener('offline', () => { if ($('toastAction').hidden || $('toast').hidden) toast('offlineNow'); });
+  // Phones may close a backgrounded app: keep the game (and clocks) saved.
+  document.addEventListener('visibilitychange', () => { if (document.hidden) saveGame(); });
 
   if (canServiceWorker) {
     let reloadOffered = false; // show the "new version" notice only once
     const offerReload = () => {
       if (reloadOffered) return;
       reloadOffered = true;
-      toast('updateReady', 'reload', () => { hideToast(); location.reload(); });
+      toast('updateReady', 'reload', () => { hideToast(); saveGame(); location.reload(); });
     };
     let switching = false;
-    // A new service worker (new VERSION in sw.js) is installed and waiting:
-    // let the player choose when to switch, then reload once it takes over.
     const offerSwitch = worker => toast('updateReady', 'reload', () => {
       hideToast();
+      saveGame();
       switching = true;
       worker.postMessage('skipWaiting');
     });
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (switching) { switching = false; location.reload(); }
     });
-    // The service worker found newer copies of the app's files in the background.
     navigator.serviceWorker.addEventListener('message', e => {
       if (e.data && e.data.type === 'updated') offerReload();
     });
@@ -1070,7 +1608,6 @@
             if (worker.state === 'installed' && navigator.serviceWorker.controller) offerSwitch(worker);
           });
         });
-        // Apps left open for a long time (e.g. installed on a phone) still find updates.
         setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
       }).catch(err => console.warn('Offline mode unavailable:', err));
     });
@@ -1079,12 +1616,9 @@
   // ---------------------------------------------------------------- start
   buildBoard();
   Engine.init();
+  Sound.setEnabled(settings.sound);
+  applyTheme();
+  nextFact();
   applyLanguage();
-  newGame();
-  if (!store.get('seenSetup', false)) {
-    store.set('seenSetup', true);
-    renderSetup();
-    nextFact();
-    openModal('newGameModal');
-  }
+  show('menu', false);
 })();
