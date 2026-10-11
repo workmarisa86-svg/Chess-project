@@ -27,10 +27,27 @@ Just open `index.html`.
 - **Settings**: clock (none, 1+0, 3+2, 5+0, 10+0, 15+10, 30+0 or custom), board colors, coordinates,
   legal-move and last-move highlights, auto-queen, confirm moves on touch screens, auto-flip, sound,
   notation language, interface language, theme, and Reset settings. Everything is saved.
-- **Statistics**: results by mode, level and color, plus the coach's counts (Great, Accurate, Good,
-  Blunder, and how often you used Best move). Reset asks for confirmation.
+- **Statistics**: results by mode, level and color, the coach's counts (Great, Accurate, Good,
+  Blunder, and how often you used Best move) and the challenge statistics. Reset asks for confirmation.
 - **Glossary**: every term the coach uses, alphabetical, with explanations and mini-board examples.
-- **Challenge**: coming in the next update.
+- **Challenge**: hundreds of puzzles in four categories — *Openings* (traps and punishing real opening
+  mistakes), *Tactics* (forks, pins, skewers, discovered attacks, back-rank mates, deflection…),
+  *Endgames* (basic mates, opposition, the rule of the square, pawn breakthroughs, king and pawn
+  endings) and *Master games* (positions from famous games such as the Opera Game and the Immortal
+  Game) — at five levels from Beginner to Impossible, with solved/total progress. The goal is shown
+  above the board ("White to move · Mate in 2"). Play your move; in longer solutions the robot
+  replies and you continue. A correct solution shows a short explanation, the theme (with a glossary
+  dropdown), a *Did you know?* fact and, for master games, what was actually played. A wrong move
+  offers *Try again*, *Hint* (highlights the piece to move) and *Show answer*. Optional timer, *Skip*,
+  and random order without repeats until everything is solved.
+- **Analysis board** (inside Challenge): set up any position with a palette of pieces and an eraser,
+  by typing (e.g. `Kg1 Rc3 Ph7 kg8`) or with a FEN (Copy/Paste). Clear, Start position, Flip, side to
+  move and castling rights. Friendly checks (no pawns on the first/last rank, one king each, kings not
+  touching, the side not to move can't be in check). **Best move** runs the engine in a Web Worker
+  (progress bar, Cancel) and shows the best move with an arrow, the top three candidates with an
+  evaluation, and why the best one works. Play it, keep exploring, Undo, or Edit again.
+- **Challenge statistics**: puzzles solved, first-try accuracy, current and best streak, and results
+  by category and level, with their own Reset.
 
 ## Install it and play offline
 
@@ -77,12 +94,29 @@ js/terms.js      glossary terms, openings and opening book
 js/facts.js      "Did you know?" facts
 js/coach.js      move ratings and best-move explanations
 js/sound.js      board sounds (synthesized, no audio files)
-js/app.js        board, controls and game flow
+js/app.js        board, controls, game flow, challenge and analysis board
+data/challenges.js  the puzzles (loaded only when Challenge opens; cached for offline use)
+tools/           Node.js scripts that generate and verify the puzzles (not used by the app)
 manifest.webmanifest  app name, colors and icons for installing
 sw.js            service worker: stores the app for offline use
 icons/           app icons
 pieces/cburnett/ chess piece images (see credits below)
 ```
+
+## How the puzzles are made
+
+The puzzles in `data/challenges.js` are generated and checked with the app's own engine by the
+scripts in `tools/` (Node.js, not used by the app):
+
+- `node tools/mine-tactics.js <seed> <minutes> <out.jsonl>` plays engine games with human-like
+  mistakes and keeps the positions where a decisive tactic appears.
+- `node tools/build-challenges.js <mined.jsonl...>` adds opening traps and punished opening
+  mistakes, endgames and positions from famous games, verifies everything and writes the data file.
+
+Every stored solution is replayed and must be legal, and at every step the solver's move must be
+clearly the best one: a forced mate (and no equally fast alternative), the only move that holds a
+draw, or a decisive margin over the second-best move. Positions that fail are discarded. The
+explanations are written from the engine's analysis by the coach, in English and Spanish.
 
 ## Publish it with GitHub Pages
 

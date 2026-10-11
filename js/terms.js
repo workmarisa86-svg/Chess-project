@@ -269,6 +269,76 @@ const TERMS = {
     es: { n: 'valor de las piezas', a: 'el', d: 'Una guía de cuánto vale cada pieza: peón 1, caballo 3, alfil 3, torre 5, dama 9. El rey no tiene precio.', w: 'Te ayuda a valorar los cambios: dar un caballo (3) por una torre (5) es buen negocio.', x: 'Capturar una torre con un alfil gana unos 2 puntos de material.' }
   },
 
+  // ---------------- Endgames ----------------
+  opposition: {
+    cat: 'endgame',
+    en: { n: 'opposition', a: 'the', d: 'The two kings stand on the same file (or rank) with one square between them. The side that does NOT have to move "has the opposition".', w: 'In king and pawn endings, having the opposition often decides whether a pawn can promote or the game is a draw: the king that must move has to give way.', x: 'White king on e4, Black king on e6, White to move: Black has the opposition, and the White king cannot go forward.' },
+    es: { n: 'oposición', a: 'la', d: 'Los dos reyes están en la misma columna (o fila) con una casilla entre ellos. El bando que NO tiene que mover «tiene la oposición».', w: 'En los finales de rey y peón, tener la oposición suele decidir si un peón corona o si la partida es tablas: el rey que debe mover tiene que ceder el paso.', x: 'Rey blanco en e4, rey negro en e6 y juegan las blancas: las negras tienen la oposición y el rey blanco no puede avanzar.' },
+    demo: { fen: '8/8/4k3/8/4K3/8/8/8 w - - 0 1', marks: ['e4', 'e6'] }
+  },
+  ruleOfSquare: {
+    cat: 'endgame',
+    en: { n: 'rule of the square', a: 'the', d: 'Imagine a square drawn from a passed pawn to its promotion rank. If the defending king can step inside that square, it catches the pawn; if not, the pawn promotes.', w: 'It lets you know at a glance whether a king can stop a pawn, without counting every move.', x: 'A White pawn on a4 has the square a4–e4–e8–a8. A Black king on f5, with Black to move, steps to e5 inside the square and catches the pawn.' },
+    es: { n: 'regla del cuadrado', a: 'la', d: 'Imagina un cuadrado que va desde un peón pasado hasta su fila de coronación. Si el rey defensor puede entrar en ese cuadrado, alcanza al peón; si no, el peón corona.', w: 'Te dice de un vistazo si un rey puede detener a un peón, sin contar todas las jugadas.', x: 'Un peón blanco en a4 tiene el cuadrado a4–e4–e8–a8. Un rey negro en f5, si juegan las negras, entra en e5 dentro del cuadrado y alcanza al peón.' },
+    demo: { fen: '8/8/8/5k2/P7/8/8/7K b - - 0 1', arrows: [['f5', 'e5']], marks: ['a4', 'e4', 'e8', 'a8'] }
+  },
+  kingPawnEnding: {
+    cat: 'endgame',
+    en: { n: 'king and pawn ending', a: 'a', d: 'An endgame where only kings and pawns are left on the board.', w: 'Every move counts, and ideas like the opposition and the rule of the square decide the result. Many longer endings turn into these.', x: 'With the White king on e6 in front of its pawn on e5, White wins even if Black defends perfectly.' },
+    es: { n: 'final de rey y peón', a: 'un', d: 'Un final en el que solo quedan reyes y peones en el tablero.', w: 'Cada jugada cuenta, y ideas como la oposición y la regla del cuadrado deciden el resultado. Muchos finales más largos acaban en uno de estos.', x: 'Con el rey blanco en e6 delante de su peón de e5, las blancas ganan aunque las negras defiendan perfectamente.' },
+    demo: { fen: '4k3/8/4K3/4P3/8/8/8/8 w - - 0 1', marks: ['e6'] }
+  },
+  breakthrough: {
+    cat: 'endgame',
+    en: { n: 'pawn breakthrough', a: 'a', d: 'Pawns sacrifice themselves to break through a wall of enemy pawns so that one of them can promote.', w: 'When the enemy king is far away, a breakthrough can turn a blocked position into a new queen.', x: 'White pawns on a5, b5 and c5 against Black pawns on a7, b7 and c7: 1.b6! and after either capture, another White pawn runs through.' },
+    es: { n: 'ruptura de peones', a: 'una', d: 'Unos peones se sacrifican para romper una barrera de peones rivales y que uno de ellos pueda coronar.', w: 'Cuando el rey rival está lejos, una ruptura puede convertir una posición bloqueada en una dama nueva.', x: 'Peones blancos en a5, b5 y c5 contra peones negros en a7, b7 y c7: 1.b6! y, capture como capture el negro, otro peón blanco pasa.' },
+    demo: { fen: '7k/ppp5/8/PPP5/8/8/8/7K w - - 0 1', arrows: [['b5', 'b6']] }
+  },
+  lucena: {
+    cat: 'endgame',
+    en: { n: 'Lucena position', a: 'the', d: 'A rook ending where one side has a king in front of its own pawn on the seventh rank and the enemy king is cut off. It is a known win: the rook builds a "bridge" to shield the king from checks.', w: 'It is the most important winning method in rook endings, and many of them come down to it.', x: 'White: king d8, pawn d7, rook f1. Black: king g7, rook c2. White plays Rf4!, so that later the rook can block the checks when the king walks out.' },
+    es: { n: 'posición de Lucena', a: 'la', d: 'Un final de torres en el que un bando tiene su rey delante de su peón en séptima y el rey rival está cortado. Es una victoria conocida: la torre construye un «puente» para proteger al rey de los jaques.', w: 'Es el método ganador más importante en los finales de torres, y muchos acaban en él.', x: 'Blancas: rey d8, peón d7, torre f1. Negras: rey g7, torre c2. Las blancas juegan Tf4!, para que después la torre pueda tapar los jaques cuando salga el rey.' },
+    demo: { fen: '3K4/3P2k1/8/8/8/8/2r5/5R2 w - - 0 1', arrows: [['f1', 'f4']], marks: ['d7'] }
+  },
+  philidorPosition: {
+    cat: 'endgame',
+    en: { n: 'Philidor position', a: 'the', d: 'The key drawing method in rook endings with rook and pawn against rook: the defending king stands in front of the pawn and the rook guards its third rank. When the pawn advances, the rook goes to the back and checks from behind.', w: 'Knowing it lets you hold many rook endings that are a pawn down.', x: 'Black: king e8, rook b6. White: king d5, pawn e5, rook a7. Black keeps the rook on the sixth rank; if e6, the rook checks from b1.' },
+    es: { n: 'posición de Philidor', a: 'la', d: 'El método clave para hacer tablas con torre contra torre y peón: el rey defensor está delante del peón y la torre vigila su tercera fila. Cuando el peón avanza, la torre se va atrás y da jaques desde lejos.', w: 'Conocerla te permite salvar muchos finales de torres con un peón de menos.', x: 'Negras: rey e8, torre b6. Blancas: rey d5, peón e5, torre a7. Las negras mantienen la torre en sexta; si e6, la torre da jaques desde b1.' },
+    demo: { fen: '4k3/R7/1r6/3KP3/8/8/8/8 b - - 0 1', marks: ['b6'] }
+  },
+  basicMate: {
+    cat: 'endgame',
+    en: { n: 'basic checkmate', a: 'a', d: 'Checkmating a lone king with king and queen, or king and rook. The defending king is pushed to the edge of the board, and your own king helps.', w: 'Every player needs to know these mates, so that a big advantage really turns into a win.', x: 'White king g6 and queen g7 against the king on h8: the queen gives check and is defended by the king. Checkmate.' },
+    es: { n: 'mate básico', a: 'un', d: 'Dar mate a un rey solo con rey y dama, o con rey y torre. El rey defensor es empujado al borde del tablero y tu propio rey ayuda.', w: 'Todo jugador debe conocer estos mates, para que una gran ventaja se convierta de verdad en victoria.', x: 'Rey blanco en g6 y dama en g7 contra el rey de h8: la dama da jaque y está defendida por el rey. Jaque mate.' },
+    demo: { fen: '7k/6Q1/6K1/8/8/8/8/8 b - - 0 1', marks: ['h8'] }
+  },
+  zugzwang: {
+    cat: 'endgame',
+    en: { n: 'zugzwang', a: '', d: 'A situation where the side to move would like to pass, because every possible move makes its position worse.', w: 'In endgames it is a powerful weapon: sometimes you win by simply making a waiting move and letting your opponent run out of good moves.', x: 'In the opposition, the king that must move has to give way: that is zugzwang.' },
+    es: { n: 'zugzwang', a: 'un', d: 'Una situación en la que al bando que mueve le gustaría pasar, porque cualquier jugada empeora su posición.', w: 'En los finales es un arma poderosa: a veces se gana con una simple jugada de espera, dejando que el rival se quede sin buenas jugadas.', x: 'Con la oposición, el rey que tiene que mover debe ceder el paso: eso es zugzwang.' }
+  },
+  underpromotion: {
+    cat: 'endgame',
+    en: { n: 'underpromotion', a: 'an', d: 'Promoting a pawn to a rook, bishop or knight instead of a queen.', w: 'It is rare but sometimes best: a knight can give a check or fork that a queen cannot, and a rook or bishop can avoid stalemate.', x: 'The pawn on e7 promotes to a knight on e8 with check, forking the king on d6 and the queen on g7.' },
+    es: { n: 'subpromoción', a: 'una', d: 'Coronar un peón como torre, alfil o caballo en lugar de dama.', w: 'Es poco frecuente pero a veces es lo mejor: un caballo puede dar un jaque o una horquilla que la dama no puede, y una torre o un alfil pueden evitar el ahogado.', x: 'El peón de e7 corona en caballo en e8 dando jaque, con horquilla al rey de d6 y a la dama de g7.' },
+    demo: { fen: '8/4P1q1/3k4/8/8/8/8/7K w - - 0 1', arrows: [['e7', 'e8'], ['e8', 'd6'], ['e8', 'g7']] }
+  },
+  // ---------------- Training and analysis ----------------
+  trap: {
+    cat: 'principle',
+    en: { n: 'opening trap', a: 'an', d: 'A sequence in the opening where a natural-looking move by the opponent loses material or even the game.', w: 'Knowing the common traps helps you avoid falling into them, and punish them when your opponent does.', x: 'In Scholar’s Mate, Black ignores the threat to f7 and is checkmated in four moves.' },
+    es: { n: 'trampa de apertura', a: 'una', d: 'Una secuencia de la apertura en la que una jugada del rival que parece natural pierde material o incluso la partida.', w: 'Conocer las trampas habituales te ayuda a no caer en ellas y a castigarlas cuando las comete tu rival.', x: 'En el mate del pastor, las negras ignoran la amenaza sobre f7 y reciben mate en cuatro jugadas.' }
+  },
+  fen: {
+    cat: 'rule',
+    en: { n: 'FEN', a: 'a', d: 'A one-line text code that describes a whole chess position: where every piece stands, whose turn it is, castling rights and more.', w: 'With a FEN you can copy a position from one app to another, or save it to look at later.', x: 'The starting position is: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1. Capital letters are White pieces, small letters are Black, and numbers count empty squares.' },
+    es: { n: 'FEN', a: 'un', d: 'Un código de una sola línea que describe toda una posición: dónde está cada pieza, a quién le toca, los derechos de enroque y más.', w: 'Con un FEN puedes copiar una posición de una aplicación a otra, o guardarla para verla después.', x: 'La posición inicial es: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1. Las mayúsculas son piezas blancas, las minúsculas negras, y los números cuentan casillas vacías. Las letras son las inglesas (K rey, Q dama, R torre, B alfil, N caballo, P peón).' }
+  },
+  evaluation: {
+    cat: 'rule',
+    en: { n: 'evaluation', a: 'an', d: 'A number that says who is better and by how much, measured in pawns. +1.0 means White is about a pawn ahead; −2.0 means Black is about two pawns ahead.', w: 'It gives a quick idea of the position. Around ±0.5 is about equal; beyond ±3 one side is usually winning.', x: '"+1.5: White is better" or "Mate in 3", when a forced checkmate has been found.' },
+    es: { n: 'evaluación', a: 'una', d: 'Un número que dice quién está mejor y por cuánto, medido en peones. +1,0 significa que las blancas tienen más o menos un peón de ventaja; −2,0, que las negras tienen unos dos peones de ventaja.', w: 'Da una idea rápida de la posición. Alrededor de ±0,5 es igualdad; más allá de ±3 un bando suele estar ganando.', x: '«+1,5: las blancas están mejor» o «Mate en 3», cuando se ha encontrado un mate forzado.' }
+  },
   // ---------------- Move ratings (used by the coach) ----------------
   great: {
     cat: 'rating',

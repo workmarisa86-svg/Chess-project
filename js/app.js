@@ -91,7 +91,11 @@
     openTerms: new Map(),
     openDemos: new Set(),
     statsColor: 'all',
-    factIdx: -1
+    factIdx: -1,
+    startFen: START_FEN,   // where the move list starts (puzzles and the analysis board use other positions)
+    hintSq: -1,            // a square to highlight (puzzle hint)
+    pz: null,              // the puzzle being solved
+    an: null               // analysis board state
   };
 
   const t = key => (UI_STRINGS[state.lang] && UI_STRINGS[state.lang][key]) || UI_STRINGS.en[key] || key;
@@ -140,6 +144,17 @@
         resolve(r);
       }, 30);
     },
+    // Stop a long search (analysis board): restart the worker. A search on the
+    // main thread can't be interrupted; its answer is simply ignored.
+    cancel() {
+      if (this.fallback || !this.worker) return;
+      try { this.worker.terminate(); } catch (e) { /* ignore */ }
+      this.worker = null;
+      const waiting = Array.from(this.pending.values());
+      this.pending.clear();
+      waiting.forEach(p => p.resolve({ cancelled: true }));
+      this.init();
+    },
     request(msg) {
       msg.fen = msg.fen || START_FEN;
       return new Promise(resolve => {
@@ -154,17 +169,21 @@
 
   // ---------------------------------------------------------------- helpers
   function positionAt(n) {
-    const g = new Core.Chess(START_FEN);
+    const g = new Core.Chess(state.startFen);
     for (let i = 0; i < n; i++) g.make(state.moves[i]);
     return g;
   }
   const isRobotGame = () => state.mode === 'cpu' || state.mode === 'learn';
-  const isHumanTurn = () => !isRobotGame() || state.game.turn === state.humanColor;
-  const canInteract = () => state.screen === 'game' && !state.over && !state.busy && !state.pending && isHumanTurn() &&
-    !(state.strip && state.strip.kind === 'blunder');
+  const isPlayMode = () => state.mode === 'pvp' || state.mode === 'cpu' || state.mode === 'learn';
+  const isTraining = () => state.mode === 'puzzle' || state.mode === 'analysis';
+  const isEditing = () => state.mode === 'analysis' && !!state.an && state.an.edit;
+  const isHumanTurn = () => state.mode === 'puzzle' ? !!state.pz && !state.pz.done && !state.pz.auto && state.game.turn === state.pz.color :
+    !isRobotGame() || state.game.turn === state.humanColor;
+  const canInteract = () => state.screen === 'game' && !state.over && !state.busy && !state.pending && isHumanTurn() && !isEditing() &&
+    !(state.strip && (state.strip.kind === 'blunder' || state.strip.kind === 'pzWrong'));
   const colorName = c => c === WHITE ? t('white') : t('black');
   const sideName = c => t(c === WHITE ? 'whiteSide' : 'blackSide'); // used mid-sentence
-  const gameInProgress = () => !!state.mode && !state.over && state.moves.length > 0;
+  const gameInProgress = () => isPlayMode() && !state.over && state.moves.length > 0;
 
   // ---------------------------------------------------------------- theme
   const darkQuery = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null;
@@ -211,6 +230,7 @@
       case 'settings': renderSettings(); break;
       case 'stats': renderStats(); break;
       case 'glossary': renderGlossary(); break;
+      case 'challenge': renderChallenge(); break;
     }
   }
 
@@ -244,7 +264,8 @@
     else show(where);
   });
   $('brandHome').addEventListener('click', goMenu);
-  $('btnLeave').addEventListener('click', goMenu);
+  // From a puzzle or the analysis board, the chevron goes back to the Challenge screen.
+  $('btnLeave').addEventListener('click', () => { if (isTraining()) history.back(); else goMenu(); });
 
   // ---------------------------------------------------------------- dialogs
   let lastFocus = null;
@@ -334,8 +355,9 @@
   }
 
   function renderBoard() {
-    const g = state.game, flip = state.flipped;
-    const checkSq = !state.over || state.over.reason === 'checkmate' ?
+    const g = state.game, flip = state.flipped, editing = isEditing();
+    const board = editing ? state.an.board : g.board;
+    const checkSq = editing ? -1 : !state.over || state.over.reason === 'checkmate' ?
       (g.inCheck() ? g.kings[g.turn >> 3] : -1) : -1;
     const hint = state.hint;
     const movable = canInteract();
@@ -343,18 +365,19 @@
     // (the side to move always faces the player who just moved), and the
     // robot's moves against the robot. Your own last move stays subtle.
     let oppLast = false;
-    if (state.lastMove) {
+    if (state.lastMove && !editing) {
       const mover = g.board[state.lastMove.to] & BLACK;
-      oppLast = !isRobotGame() || mover !== state.humanColor;
+      if (state.mode === 'puzzle') oppLast = !!state.pz && mover !== state.pz.color;
+      else oppLast = !isRobotGame() || mover !== state.humanColor;
     }
     const showLast = settings.showLast, showLegal = settings.showLegal, coords = settings.coords;
     for (const [sq, el] of sqEls) {
       const r = sq >> 4, f = sq & 7;
       el.style.gridRow = flip ? r + 1 : 8 - r;
       el.style.gridColumn = flip ? 8 - f : f + 1;
-      const p = g.board[sq];
+      const p = board[sq];
       const cls = el.classList;
-      const onLast = showLast && !!state.lastMove && (state.lastMove.from === sq || state.lastMove.to === sq);
+      const onLast = !editing && showLast && !!state.lastMove && (state.lastMove.from === sq || state.lastMove.to === sq);
       const target = showLegal && state.targets.includes(sq);
       cls.toggle('last-opp', onLast && oppLast);
       cls.toggle('last', onLast && !oppLast);
@@ -362,7 +385,7 @@
       cls.toggle('target', target);
       cls.toggle('capture', target && (!!p || isEpTarget(sq)));
       cls.toggle('check', sq === checkSq);
-      cls.toggle('hint', !!hint && (sqParse(hint.from) === sq || sqParse(hint.to) === sq));
+      cls.toggle('hint', (!!hint && (sqParse(hint.from) === sq || sqParse(hint.to) === sq)) || state.hintSq === sq);
       cls.toggle('movable', movable && !!p && (p & BLACK) === g.turn);
       cls.remove('drag-src', 'drop-over');
       let html = pieceHTML(p);
@@ -373,6 +396,7 @@
       if (el._html !== html) { el.innerHTML = html; el._html = html; }
     }
     arrowsEl.innerHTML = arrowSVG(hint ? [[hint.from, hint.to]] : [], flip, 800);
+    boardEl.classList.toggle('editing', editing);
   }
 
   function isEpTarget(sq) {
@@ -425,6 +449,7 @@
   boardEl.addEventListener('pointerdown', e => {
     if (e.button !== undefined && e.button !== 0) return;
     const sq = squareFromPoint(e.clientX, e.clientY);
+    if (sq >= 0 && isEditing() && state.screen === 'game') { e.preventDefault(); editTap(sq); return; }
     if (sq < 0 || !canInteract()) return;
     e.preventDefault();
     if (state.selected >= 0 && state.targets.includes(sq)) { tryMove(state.selected, sq); return; }
@@ -520,7 +545,7 @@
 
   // ---------------------------------------------------------------- clocks
   // Clocks are used in Vs Friend and Vs Robot (Alone), not in Coach games.
-  const clockConfig = mode => (settings.clock && mode !== 'learn') ? settings.clock : null;
+  const clockConfig = mode => (settings.clock && (mode === 'pvp' || mode === 'cpu')) ? settings.clock : null;
 
   function newClock(cfg) {
     return cfg ? { w: cfg.base * 60000, b: cfg.base * 60000, inc: cfg.inc * 1000, running: false, last: 0, base: cfg.base, incS: cfg.inc } : null;
@@ -630,6 +655,11 @@
 
   function endGame(over, quiet) {
     state.over = Object.assign({ over: true }, over);
+    if (isTraining()) { // puzzles and analysis: nothing to record or save
+      if (!quiet) Sound.play('end');
+      renderGame();
+      return;
+    }
     if (state.clock) { pauseClock(); state.clock.running = false; }
     if (!state.recorded) {
       state.recorded = true;
@@ -643,6 +673,8 @@
   }
 
   function humanMove(m) {
+    if (state.mode === 'puzzle') { puzzleMove(m); return; }
+    if (state.mode === 'analysis') { state.strip = null; state.hint = null; applyMove(m); renderGame(); return; }
     const ply = state.moves.length;
     state.strip = null;
     applyMove(m);
@@ -722,6 +754,8 @@
   const boardResult = () => state.over && ['checkmate', 'stalemate', 'threefold', 'fifty', 'insufficient'].includes(state.over.reason);
 
   function canUndo() {
+    if (state.mode === 'analysis') return !isEditing() && state.moves.length > 0;
+    if (state.mode === 'puzzle') return false;
     if (state.over && !boardResult()) return false; // resignations, time and agreed draws are final
     if (!state.moves.length) return false;
     if (isRobotGame()) return state.moves.length > (state.humanColor === WHITE ? 0 : 1) || state.busy;
@@ -734,6 +768,7 @@
     const wasBusy = state.busy;
     state.busy = false;
     state.strip = null;
+    if (state.mode === 'analysis') { if (wasBusy) Engine.cancel(); undoPlies(1); renderGame(); return; }
     if (!isRobotGame()) { undoPlies(1); saveGame(); renderGame(); return; }
     // Go back to the position before the human's most recent move.
     const turnAt = k => (k % 2 === 0 ? WHITE : BLACK);
@@ -751,7 +786,9 @@
   function newGameState(mode) {
     state.token++;
     state.mode = mode;
+    state.startFen = START_FEN;
     state.game = new Core.Chess(START_FEN);
+    state.pz = null; state.an = null; state.hintSq = -1;
     state.moves = []; state.sans = [];
     state.selected = -1; state.targets = [];
     state.lastMove = null; state.over = null; state.busy = false; state.hint = null;
@@ -808,6 +845,7 @@
 
   // ---------------------------------------------------------------- saving / resuming
   function saveGame() {
+    if (!isPlayMode()) return; // puzzles and analysis never touch the saved game
     if (!gameInProgress()) { discardSaved(); return; }
     const k = state.clock;
     store.set('game', {
@@ -907,6 +945,18 @@
       case 'hide':
         state.strip = null; state.hint = null; renderGame();
         break;
+      case 'pzRetry':
+        state.strip = null; undoPlies(1); renderGame();
+        break;
+      case 'pzHint': puzzleHint(); break;
+      case 'pzAnswer': puzzleShowAnswer(); break;
+      case 'pzNext': nextPuzzle(); break;
+      case 'anCancel':
+        state.token++; Engine.cancel(); state.busy = false; state.strip = null; renderGame();
+        break;
+      case 'anPlay':
+        if (s && s.kind === 'anResult') humanMove(s.ex.move);
+        break;
       case 'confirm':
         if (state.pending) { const m = state.pending; state.strip = s.prev || null; humanMove(m); }
         break;
@@ -954,6 +1004,29 @@
           </div>`;
         break;
       }
+      case 'pzWrong':
+        html = `<div class="strip-line"><span class="rate-pill r-blunder">✗ ${esc(t('pzWrong'))}</span></div>
+          <div class="strip-actions">
+            <button type="button" class="btn small primary" data-strip="pzRetry">↶ ${esc(t('tryAgain'))}</button>
+            <button type="button" class="btn small" data-strip="pzHint">💡 ${esc(t('hint'))}</button>
+            <button type="button" class="btn small" data-strip="pzAnswer">👁 ${esc(t('showAnswer'))}</button>
+          </div>`;
+        break;
+      case 'pzSolved':
+      case 'pzAnswer':
+        html = puzzleResultHTML(s.kind);
+        break;
+      case 'anThinking':
+        html = `<div class="strip-line pending">${esc(t('analyzing'))}</div>
+          <div class="progress" aria-hidden="true"><span style="animation-duration:${s.limit}ms"></span></div>
+          <div class="strip-actions"><button type="button" class="btn small" data-strip="anCancel">✕ ${esc(t('cancel'))}</button></div>`;
+        break;
+      case 'anResult':
+        html = analysisResultHTML(s);
+        break;
+      case 'anInfo':
+        html = `<div class="strip-line">${esc(s.text)}</div>`;
+        break;
       case 'confirm': {
         const g = state.game;
         const sn = g.san(s.move, g.moves());
@@ -989,7 +1062,7 @@
     });
   }
 
-  const CAT_KEY = { tactic: 'catTactic', rule: 'catRule', principle: 'catPrinciple', opening: 'catOpening', rating: 'catRating' };
+  const CAT_KEY = { tactic: 'catTactic', rule: 'catRule', principle: 'catPrinciple', opening: 'catOpening', rating: 'catRating', endgame: 'catEndgame' };
 
   function explanationHTML(id, key) {
     const term = TERMS[id];
@@ -1072,6 +1145,18 @@
   // ---------------------------------------------------------------- game screen
   function statusText() {
     const g = state.game, o = state.over;
+    if (state.mode === 'puzzle' && state.pz) {
+      const pz = state.pz;
+      if (pz.done) return t(pz.failed ? 'pzAnswerShown' : pz.mistakes || pz.hints ? 'pzSolved' : 'pzCorrect');
+      if (pz.auto) return t(pz.failed ? 'pzShowing' : 'pzReplying');
+      return goalText(pz);
+    }
+    if (state.mode === 'analysis') {
+      if (isEditing()) return t('setupTitle');
+      if (o) return o.reason === 'checkmate' ? tf('checkmateWin', { side: o.winner === WHITE ? t('whiteSide') : t('blackSide') }) : t(o.reason);
+      if (state.busy) return t('analyzing');
+      return (g.turn === WHITE ? t('whiteToMove') : t('blackToMove')) + (g.inCheck() ? ' — ' + t('check') : '');
+    }
     if (o) {
       const vsRobot = isRobotGame();
       switch (o.reason) {
@@ -1106,10 +1191,13 @@
     if (!state.sans.length) { el.innerHTML = `<p class="empty">${esc(t('noMoves'))}</p>`; return; }
     let html = '';
     const cur = state.sans.length - 1;
-    for (let i = 0; i < state.sans.length; i += 2) {
-      const w = state.sans[i], b = state.sans[i + 1];
-      html += `<div class="mrow"><span class="num">${i / 2 + 1}.</span>` +
-        `<span class="mv${cur === i ? ' cur' : ''}">${esc(san(w))}</span>` +
+    // Puzzles and the analysis board can start in the middle of a game, with Black to move.
+    const parts = state.startFen.split(' ');
+    const off = parts[1] === 'b' ? 1 : 0, first = parseInt(parts[5], 10) || 1;
+    for (let i = -off; i < state.sans.length; i += 2) {
+      const w = i >= 0 ? state.sans[i] : null, b = state.sans[i + 1];
+      html += `<div class="mrow"><span class="num">${first + (i + off) / 2}.</span>` +
+        `<span class="mv${cur === i ? ' cur' : ''}">${w ? esc(san(w)) : '…'}</span>` +
         `<span class="mv${cur === i + 1 ? ' cur' : ''}">${b ? esc(san(b)) : ''}</span></div>`;
     }
     el.innerHTML = html;
@@ -1139,17 +1227,41 @@
     };
     const bottomColor = state.flipped ? BLACK : WHITE;
     const top = bar(bottomColor ^ BLACK), bottom = bar(bottomColor);
+    if (state.mode === 'puzzle' && state.pz) {
+      const p = state.pz.p;
+      top.html = `<span class="player-name">🎯 ${esc(t(CAT_NAME[p.c]))} · ${esc(t(LEVEL_KEY[LEVELS[p.l]]))}</span>`;
+      top.active = false;
+      bottom.html = `<span class="player-name"><span class="swatch ${state.pz.color === WHITE ? 'w' : 'b'}"></span>${esc(t('you'))}</span>` +
+        (chSetup.timer ? `<span class="clock pz-timer" id="pzTimer">${fmtElapsed(puzzleElapsed())}</span>` : '');
+      bottom.active = !state.pz.done;
+    }
+    $('barTop').hidden = $('barBottom').hidden = isEditing();
     $('barTop').innerHTML = top.html; $('barTop').classList.toggle('active', top.active);
     $('barBottom').innerHTML = bottom.html; $('barBottom').classList.toggle('active', bottom.active);
     updateClocks();
   }
 
   function renderControls() {
+    const puzzle = state.mode === 'puzzle', analysis = state.mode === 'analysis', editing = isEditing();
+    const pz = state.pz;
+    $('btnUndo').hidden = puzzle;
     $('btnUndo').disabled = !canUndo();
     const coach = state.mode === 'learn';
-    $('btnBest').hidden = !coach;
-    $('btnBest').disabled = !coach || state.busy || !!state.over || !isHumanTurn() || !!state.pending ||
+    $('btnBest').hidden = !coach && !analysis;
+    $('btnBest').disabled = analysis ? state.busy || !!state.over :
+      !coach || state.busy || !!state.over || !isHumanTurn() || !!state.pending ||
       (state.strip && (state.strip.kind === 'blunder' || state.strip.kind === 'best'));
+    $('btnHint').hidden = !puzzle || !pz || pz.done;
+    $('btnHint').disabled = !pz || pz.auto || state.hintSq >= 0;
+    $('btnSkip').hidden = !puzzle || !pz || pz.done;
+    $('btnSkip').disabled = !pz || pz.auto;
+    $('btnNext').hidden = !puzzle || !pz || !pz.done;
+    $('btnEdit').hidden = !analysis;
+    document.querySelector('#scrGame .controls').hidden = editing;
+    $('editPanel').hidden = !editing;
+    $('movesPanel').hidden = editing;
+    $('btnMore').hidden = isTraining();
+    if (editing) renderEditPanel();
     document.querySelector('#moreMenu [data-act="draw"]').disabled = !!state.over || state.busy || !state.moves.length;
     document.querySelector('#moreMenu [data-act="resign"]').disabled = !!state.over || !state.moves.length;
   }
@@ -1166,7 +1278,11 @@
 
   $('btnUndo').addEventListener('click', undo);
   $('btnFlip').addEventListener('click', () => { state.flipped = !state.flipped; renderBoard(); renderBars(); });
-  $('btnBest').addEventListener('click', () => requestBest(0));
+  $('btnBest').addEventListener('click', () => { if (state.mode === 'analysis') analysisBest(); else requestBest(0); });
+  $('btnHint').addEventListener('click', puzzleHint);
+  $('btnSkip').addEventListener('click', puzzleSkip);
+  $('btnNext').addEventListener('click', nextPuzzle);
+  $('btnEdit').addEventListener('click', () => editPosition(state.game.fen()));
 
   function closeMore() { $('moreMenu').hidden = true; $('btnMore').setAttribute('aria-expanded', 'false'); }
   $('btnMore').addEventListener('click', e => {
@@ -1205,6 +1321,619 @@
     resumeClock();
     if (isRobotGame() && state.game.turn !== state.humanColor) robotTurn();
   }
+
+  // ---------------------------------------------------------------- challenge: puzzles
+  // The puzzles live in data/challenges.js. It is only loaded when the
+  // Challenge screen is first opened (the service worker keeps it for offline
+  // use). Each puzzle: i id, f position (FEN), s solution (moves, the robot's
+  // replies in between), g goal, t theme, l level 0-4, c category, en/es
+  // explanation, n game name and a "what happened next" for master games.
+  const CATS = ['o', 't', 'e', 'g'];
+  const CAT_NAME = { o: 'catOpenings', t: 'catTactics', e: 'catEndgames', g: 'catGames' };
+  const chSetup = Object.assign({ cat: 't', level: 0, timer: false }, store.get('challengeSetup', {}));
+  if (!CATS.includes(chSetup.cat)) chSetup.cat = 't';
+  if (!(chSetup.level >= 0 && chSetup.level <= 4)) chSetup.level = 0;
+  const saveChSetup = () => store.set('challengeSetup', chSetup);
+  const seenThisSession = new Set();
+  let puzzlesPromise = null;
+
+  function loadPuzzles() {
+    if (window.CHALLENGES) return Promise.resolve(window.CHALLENGES);
+    if (!puzzlesPromise) {
+      puzzlesPromise = new Promise((resolve, reject) => {
+        const el = document.createElement('script');
+        el.src = 'data/challenges.js';
+        el.onload = () => (window.CHALLENGES ? resolve(window.CHALLENGES) : reject(new Error('no data')));
+        el.onerror = () => { puzzlesPromise = null; el.remove(); reject(new Error('load failed')); };
+        document.head.appendChild(el);
+      });
+    }
+    return puzzlesPromise;
+  }
+
+  const PROMO_CH = ' pnbrqk';
+  const uciOf = m => sqName(mFrom(m)) + sqName(mTo(m)) + (mPromo(m) ? PROMO_CH[mPromo(m)] : '');
+  const fromUci = (g, u) => g.moves().find(m => uciOf(m) === u) || 0;
+
+  // Challenge statistics: solved puzzles (by id), first-try results, streaks,
+  // and results per category and level.
+  function chStats() {
+    const s = Object.assign({ solved: {}, played: 0, first: 0, cur: 0, best: 0, cat: {}, lvl: {} }, store.get('challengeStats', {}));
+    for (const k of ['solved', 'cat', 'lvl']) if (!s[k] || typeof s[k] !== 'object') s[k] = {};
+    return s;
+  }
+  function recordChallenge(p, result) { // result: 'first' | 'solved' | 'failed'
+    const s = chStats();
+    s.played++;
+    const bump = (obj, k) => {
+      const r = obj[k] || (obj[k] = { p: 0, s: 0, f: 0 });
+      r.p++;
+      if (result !== 'failed') r.s++;
+      if (result === 'first') r.f++;
+    };
+    bump(s.cat, p.c); bump(s.lvl, p.l);
+    if (result === 'first') { s.first++; s.cur++; s.best = Math.max(s.best, s.cur); } else s.cur = 0;
+    if (result !== 'failed') s.solved[p.i] = 1;
+    store.set('challengeStats', s);
+  }
+
+  // Random order, no repeats: unsolved puzzles first (not shown again in this
+  // session until the others have been seen); once all are solved, go round
+  // again in a new random order.
+  function pickPuzzle(all) {
+    const pool = all.filter(p => p.c === chSetup.cat && p.l === chSetup.level);
+    if (!pool.length) return null;
+    const solved = chStats().solved;
+    const current = state.pz ? state.pz.p.i : null;
+    let cand = pool.filter(p => !solved[p.i] && !seenThisSession.has(p.i));
+    if (!cand.length) {
+      cand = pool.filter(p => !solved[p.i] && p.i !== current);
+      cand.forEach(p => seenThisSession.delete(p.i));
+    }
+    if (!cand.length) cand = pool.filter(p => !solved[p.i]);
+    if (cand.length) return cand[Math.floor(Math.random() * cand.length)];
+    const key = chSetup.cat + chSetup.level;
+    const decks = store.get('challengeDeck', {});
+    let deck = (Array.isArray(decks[key]) ? decks[key] : []).filter(id => pool.some(p => p.i === id));
+    if (!deck.length) {
+      deck = pool.map(p => p.i).filter(id => id !== current);
+      for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
+      toast('chAllSolved');
+    }
+    const id = deck.shift();
+    decks[key] = deck;
+    store.set('challengeDeck', decks);
+    return pool.find(p => p.i === id) || pool[0];
+  }
+
+  function nextPuzzle() {
+    loadPuzzles().then(all => {
+      const p = pickPuzzle(all);
+      if (p) startPuzzle(p); else show('challenge');
+    }).catch(() => toast('loadFailed'));
+  }
+
+  function startPuzzle(p) {
+    newGameState('puzzle');
+    state.startFen = p.f;
+    state.game = new Core.Chess(p.f);
+    state.pz = {
+      p, line: p.s.split(' '), step: 0, color: state.game.turn,
+      mistakes: 0, hints: 0, done: false, failed: false, auto: false, recorded: false, t0: performance.now(), t: 0
+    };
+    state.flipped = state.pz.color === BLACK;
+    seenThisSession.add(p.i);
+    if (state.screen !== 'game') show('game');
+    else { window.scrollTo(0, 0); renderGame(); }
+  }
+
+  const puzzleElapsed = () => { const pz = state.pz; return !pz ? 0 : pz.done ? pz.t : performance.now() - pz.t0; };
+  function fmtElapsed(ms) {
+    const s = Math.floor(ms / 1000);
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }
+  setInterval(() => {
+    if (state.mode !== 'puzzle' || state.screen !== 'game' || !chSetup.timer || !state.pz || state.pz.done) return;
+    const el = $('pzTimer');
+    if (el) el.textContent = fmtElapsed(puzzleElapsed());
+  }, 250);
+
+  function goalText(pz) {
+    const g = pz.p.g;
+    const goal = g.charAt(0) === 'm' && g !== 'mat' ? tf('goalMate', { n: g.slice(1) }) :
+      t({ mat: 'goalMaterial', win: 'goalWin', draw: 'goalDraw', best: 'goalBest' }[g] || 'goalBest');
+    return `${t(pz.color === WHITE ? 'whiteToMove' : 'blackToMove')} · ${goal}`;
+  }
+
+  function puzzleMove(m) {
+    const pz = state.pz, g = state.game;
+    let ok = uciOf(m) === pz.line[pz.step];
+    if (!ok) { g.make(m); ok = g.status().reason === 'checkmate'; g.undo(); } // any checkmate solves it
+    state.strip = null;
+    state.hintSq = -1;
+    applyMove(m);
+    if (!ok) {
+      pz.mistakes++;
+      state.strip = { kind: 'pzWrong' };
+      Sound.play('error');
+      renderGame();
+      return;
+    }
+    pz.step++;
+    if (state.over || pz.step >= pz.line.length) { puzzleSolved(); return; }
+    // The robot answers with the defence from the solution.
+    pz.auto = true;
+    renderGame();
+    const token = state.token;
+    setTimeout(() => {
+      if (token !== state.token) return;
+      const r = fromUci(state.game, pz.line[pz.step]);
+      pz.step++;
+      pz.auto = false;
+      if (r) applyMove(r);
+      renderGame();
+    }, 450);
+  }
+
+  function puzzleHint() {
+    const pz = state.pz;
+    if (!pz || pz.done || pz.auto) return;
+    if (state.strip && state.strip.kind === 'pzWrong') undoPlies(1);
+    state.strip = null;
+    pz.hints++;
+    const m = fromUci(state.game, pz.line[pz.step]);
+    state.hintSq = m ? mFrom(m) : -1; // highlight the piece to move
+    renderGame();
+  }
+
+  function puzzleShowAnswer() {
+    const pz = state.pz;
+    if (!pz || pz.done) return;
+    if (state.strip && state.strip.kind === 'pzWrong') undoPlies(1);
+    pz.failed = true;
+    pz.auto = true;
+    state.strip = null;
+    state.hintSq = -1;
+    const token = ++state.token;
+    const step = () => {
+      if (token !== state.token) return;
+      if (pz.step >= pz.line.length) { puzzleSolved(); return; }
+      const m = fromUci(state.game, pz.line[pz.step]);
+      if (!m) { puzzleSolved(); return; }
+      state.hint = { from: sqName(mFrom(m)), to: sqName(mTo(m)) };
+      renderGame();
+      setTimeout(() => {
+        if (token !== state.token) return;
+        applyMove(m);
+        pz.step++;
+        renderGame();
+        setTimeout(step, 450);
+      }, 650);
+    };
+    step();
+  }
+
+  function puzzleSolved() {
+    const pz = state.pz;
+    pz.done = true;
+    pz.auto = false;
+    pz.t = performance.now() - pz.t0;
+    state.hintSq = -1;
+    if (!pz.recorded) {
+      pz.recorded = true;
+      recordChallenge(pz.p, pz.failed ? 'failed' : (pz.mistakes || pz.hints) ? 'solved' : 'first');
+    }
+    state.strip = { kind: pz.failed ? 'pzAnswer' : 'pzSolved' };
+    if (!pz.failed && !state.over) Sound.play('notify');
+    nextFact();
+    $('endFact').hidden = false;
+    renderGame();
+  }
+
+  function puzzleSkip() {
+    const pz = state.pz;
+    if (!pz || pz.auto) return;
+    // Skipping after a wrong try or a hint counts as not solved.
+    if (!pz.done && !pz.recorded && (pz.mistakes || pz.hints)) { pz.recorded = true; recordChallenge(pz.p, 'failed'); }
+    nextPuzzle();
+  }
+
+  // Explanations: {{Nf3}} marks a move (shown in the chosen notation), [[term]] a glossary term.
+  const puzzleText = str => renderTokens(esc(str).replace(/\{\{([^}]+)\}\}/g, (_, x) => `<b class="mv">${esc(san(x))}</b>`));
+
+  function puzzleResultHTML(kind) {
+    const pz = state.pz, p = pz.p, L = state.lang;
+    const key = 'pz:' + p.i;
+    const head = kind === 'pzSolved' ?
+      `<span class="rate-pill r-great">✓ ${esc(t(pz.mistakes || pz.hints ? 'pzSolved' : 'pzCorrect'))}</span>` :
+      `<span class="rate-pill r-good">👁 ${esc(t('pzAnswerShown'))}</span>`;
+    const time = chSetup.timer && kind === 'pzSolved' ? ` <span class="pz-time">⏱ ${fmtElapsed(pz.t)}</span>` : '';
+    let body = '';
+    if (p.n) body += `<p class="pz-game">🏛️ <b>${esc(p.n[L] || p.n.en)}</b></p>`;
+    if (TERMS[p.t]) body += `<p class="pz-theme">${esc(t('theme'))}: ${renderTokens('[[C:' + p.t + ']]')}</p>`;
+    body += `<p>${puzzleText(p[L] || p.en)}</p>`;
+    if (p.a) body += `<p class="pz-after">${puzzleText(p.a[L] || p.a.en)}</p>`;
+    return `<div class="strip-line">${head}${time}</div>
+      <div class="cpara" data-key="${key}">${body}<div class="term-slot">${slotHTML(key)}</div></div>
+      <div class="strip-actions"><button type="button" class="btn small primary" data-strip="pzNext">→ ${esc(t('next'))}</button></div>`;
+  }
+
+  // ---------------------------------------------------------------- challenge screen
+  function renderChallenge() {
+    document.querySelectorAll('#chCats [data-cat]').forEach(b => b.classList.toggle('selected', b.dataset.cat === chSetup.cat));
+    document.querySelectorAll('#chLevels [data-l]').forEach(b => b.classList.toggle('selected', +b.dataset.l === chSetup.level));
+    $('chLevelDesc').textContent = t('chLvlDesc' + chSetup.level);
+    $('chTimer').checked = !!chSetup.timer;
+    const all = window.CHALLENGES;
+    if (!all) {
+      $('chLoading').hidden = false;
+      $('chLoading').textContent = t('loading');
+      $('btnChStart').disabled = true;
+      $('chProgress').hidden = true;
+      loadPuzzles().then(() => { if (state.screen === 'challenge') renderChallenge(); })
+        .catch(() => { $('chLoading').textContent = t('loadFailed'); });
+      return;
+    }
+    $('chLoading').hidden = true;
+    $('chProgress').hidden = false;
+    const solved = chStats().solved;
+    document.querySelectorAll('#chCats [data-cat]').forEach(b => {
+      const list = all.filter(p => p.c === b.dataset.cat);
+      b.querySelector('small').textContent = tf('chSolvedShort', { s: list.filter(p => solved[p.i]).length, n: list.length });
+    });
+    const pool = all.filter(p => p.c === chSetup.cat && p.l === chSetup.level);
+    const done = pool.filter(p => solved[p.i]).length;
+    $('chProgressText').textContent = pool.length ? tf('chProgress', { s: done, n: pool.length }) : t('chNone');
+    $('chProgressBar').style.width = pool.length ? (done / pool.length * 100) + '%' : '0';
+    $('btnChStart').disabled = !pool.length;
+  }
+  $('chCats').addEventListener('click', e => {
+    const b = e.target.closest('[data-cat]');
+    if (b) { chSetup.cat = b.dataset.cat; saveChSetup(); renderChallenge(); }
+  });
+  $('chLevels').addEventListener('click', e => {
+    const b = e.target.closest('[data-l]');
+    if (b) { chSetup.level = +b.dataset.l; saveChSetup(); renderChallenge(); }
+  });
+  $('chTimer').addEventListener('change', e => { chSetup.timer = e.target.checked; saveChSetup(); });
+  $('btnChStart').addEventListener('click', nextPuzzle);
+  $('btnAnalysis').addEventListener('click', () => startAnalysis());
+
+  // ---------------------------------------------------------------- analysis board
+  // Set up any position (palette, text or FEN), check that it is legal, then
+  // ask the engine for the best move, the top three candidates and why.
+  const ANALYSIS_MS = 4000;
+  const EDIT_TOOLS = ['wK', 'wQ', 'wR', 'wB', 'wN', 'wP', 'bK', 'bQ', 'bR', 'bB', 'bN', 'bP', 'x'];
+  const toolPiece = tool => tool === 'x' ? 0 : PIECE_CODE.indexOf(tool[1]) | (tool[0] === 'b' ? BLACK : WHITE);
+  const sqOf = (f, r) => r * 16 + f;
+
+  function startAnalysis() {
+    newGameState('analysis');
+    state.flipped = false;
+    editPosition(store.get('analysisFen', START_FEN), true);
+    show('game');
+  }
+
+  // Read a FEN into the editor. Returns false (and changes nothing) if it can't be read.
+  function parseFen(fen) {
+    const parts = String(fen || '').trim().split(/\s+/);
+    const rows = (parts[0] || '').split('/');
+    if (rows.length !== 8) return null;
+    const board = new Int8Array(128);
+    for (let r = 0; r < 8; r++) {
+      let f = 0;
+      for (const ch of rows[r]) {
+        if (ch >= '1' && ch <= '8') { f += +ch; continue; }
+        const type = ' pnbrqk'.indexOf(ch.toLowerCase());
+        if (type < 1 || f > 7) return null;
+        board[sqOf(f, 7 - r)] = type | (ch === ch.toLowerCase() ? BLACK : WHITE);
+        f++;
+      }
+      if (f !== 8) return null;
+    }
+    const turn = parts[1] === 'b' ? BLACK : WHITE;
+    if (parts[1] && parts[1] !== 'w' && parts[1] !== 'b') return null;
+    const castle = new Set((parts[2] && parts[2] !== '-' ? parts[2] : '').split('').filter(c => 'KQkq'.includes(c)));
+    return { board, turn, castle };
+  }
+
+  function editPosition(fen, quiet) {
+    if (state.busy) Engine.cancel();
+    state.token++;
+    state.busy = false;
+    const pos = parseFen(fen) || parseFen(START_FEN);
+    state.an = { edit: true, tool: (state.an && state.an.tool) || 'wP', board: pos.board, turn: pos.turn, castle: pos.castle, msg: null };
+    state.moves = []; state.sans = [];
+    state.lastMove = null; state.over = null; state.hint = null; state.strip = null; state.hintSq = -1;
+    state.selected = -1; state.targets = [];
+    fixCastling();
+    state.an.msg = validatePosition();
+    if (!quiet) renderGame();
+  }
+
+  // Castling is only possible with the king and rook on their starting squares.
+  function castleAllowed(c) {
+    const b = state.an.board;
+    const K = KING | (c === c.toUpperCase() ? WHITE : BLACK), R = ROOK | (c === c.toUpperCase() ? WHITE : BLACK);
+    const r = c === c.toUpperCase() ? 0 : 7;
+    return b[sqOf(4, r)] === K && b[sqOf('Kk'.includes(c) ? 7 : 0, r)] === R;
+  }
+  function fixCastling() { for (const c of Array.from(state.an.castle)) if (!castleAllowed(c)) state.an.castle.delete(c); }
+
+  function editorFen() {
+    const an = state.an;
+    let s = '';
+    for (let r = 7; r >= 0; r--) {
+      let empty = 0;
+      for (let f = 0; f < 8; f++) {
+        const p = an.board[sqOf(f, r)];
+        if (!p) { empty++; continue; }
+        if (empty) { s += empty; empty = 0; }
+        const ch = ' pnbrqk'[p & 7];
+        s += p & BLACK ? ch : ch.toUpperCase();
+      }
+      if (empty) s += empty;
+      if (r) s += '/';
+    }
+    const c = 'KQkq'.split('').filter(x => an.castle.has(x)).join('') || '-';
+    return `${s} ${an.turn === BLACK ? 'b' : 'w'} ${c} - 0 1`;
+  }
+
+  // Friendly checks: returns a message, or null if the position is legal.
+  function validatePosition() {
+    const b = state.an.board;
+    const count = { [WHITE]: { all: 0, K: 0, P: 0 }, [BLACK]: { all: 0, K: 0, P: 0 } };
+    const kings = {};
+    for (let r = 0; r < 8; r++) for (let f = 0; f < 8; f++) {
+      const sq = sqOf(f, r), p = b[sq];
+      if (!p) continue;
+      const c = count[p & BLACK];
+      c.all++;
+      if ((p & 7) === KING) { c.K++; kings[p & BLACK] = sq; }
+      if ((p & 7) === PAWN) {
+        c.P++;
+        if (r === 0 || r === 7) return tf('errPawnRank', { sq: sqName(sq) });
+      }
+    }
+    for (const col of [WHITE, BLACK]) {
+      const c = count[col], side = sideName(col);
+      if (c.K === 0) return tf('errNoKing', { side });
+      if (c.K > 1) return tf('errTwoKings', { side });
+      if (c.P > 8) return tf('errPawns', { side });
+      if (c.all > 16) return tf('errTooMany', { side });
+    }
+    const kw = kings[WHITE], kb = kings[BLACK];
+    if (Math.abs((kw & 7) - (kb & 7)) <= 1 && Math.abs((kw >> 4) - (kb >> 4)) <= 1) return t('errKingsTouch');
+    const g = new Core.Chess(editorFen());
+    const other = state.an.turn ^ BLACK;
+    if (g.inCheck(other)) return tf('errOppCheck', { side: sideName(other), turn: sideName(state.an.turn) });
+    return null;
+  }
+
+  function editChanged() {
+    fixCastling();
+    state.an.msg = validatePosition();
+    renderBoard();
+    renderEditPanel();
+  }
+
+  function editTap(sq) {
+    const an = state.an, piece = toolPiece(an.tool);
+    if (an.tool === 'x' || an.board[sq] === piece) an.board[sq] = 0;
+    else {
+      if ((piece & 7) === PAWN && ((sq >> 4) === 0 || (sq >> 4) === 7)) {
+        an.msg = tf('errPawnRank', { sq: sqName(sq) });
+        Sound.play('error');
+        renderEditPanel(true);
+        return;
+      }
+      // Only one king per side: placing a king moves it.
+      if ((piece & 7) === KING) for (let s = 0; s < 128; s++) if (!(s & 0x88) && an.board[s] === piece) an.board[s] = 0;
+      an.board[sq] = piece;
+    }
+    editChanged();
+  }
+
+  // Text entry such as "Kg1 Rc3 Ph7 kg8": capitals are White, small letters Black.
+  function addPiecesFromText(text) {
+    const letters = nl() === 'es' ? 'RDTACP' : 'KQRBNP'; // king, queen, rook, bishop, knight, pawn
+    const placed = [], bad = [];
+    for (const tok of text.trim().split(/[\s,;]+/).filter(Boolean)) {
+      const m = /^([A-Za-z])([a-h][1-8])$/.exec(tok);
+      const i = m ? letters.indexOf(m[1].toUpperCase()) : -1;
+      if (i < 0) { bad.push(tok); continue; }
+      const type = [KING, QUEEN, ROOK, BISHOP, KNIGHT, PAWN][i];
+      const sq = sqParse(m[2]);
+      if (type === PAWN && ((sq >> 4) === 0 || (sq >> 4) === 7)) { bad.push(tok); continue; }
+      placed.push([sq, type | (m[1] === m[1].toUpperCase() ? WHITE : BLACK)]);
+    }
+    for (const [sq, p] of placed) {
+      if ((p & 7) === KING) for (let s = 0; s < 128; s++) if (!(s & 0x88) && state.an.board[s] === p) state.an.board[s] = 0;
+      state.an.board[sq] = p;
+    }
+    editChanged();
+    if (bad.length) { state.an.msg = tf('errText', { list: bad.join(' ') }); renderEditPanel(true); }
+    return !bad.length;
+  }
+
+  function renderEditPanel(flash) {
+    const an = state.an;
+    if (!an) return;
+    const pal = $('palette');
+    if (!pal.children.length) {
+      pal.innerHTML = EDIT_TOOLS.map(tl => `<button type="button" data-tool="${tl}" class="${tl === 'x' ? 'eraser' : ''}">` +
+        (tl === 'x' ? '<span class="eraser-icon" aria-hidden="true">⌫</span>' : pieceHTML(toolPiece(tl))) + '</button>').join('');
+    }
+    pal.querySelectorAll('[data-tool]').forEach(b => {
+      const tl = b.dataset.tool;
+      b.classList.toggle('selected', tl === an.tool);
+      b.setAttribute('aria-pressed', tl === an.tool);
+      b.setAttribute('aria-label', tl === 'x' ? t('eraser') :
+        `${tl[0] === 'w' ? t('white') : t('black')} ${PIECE_NAMES[state.lang][PIECE_CODE.indexOf(tl[1])]}`);
+    });
+    document.querySelectorAll('#edTurn [data-turn]').forEach(b => b.classList.toggle('selected', (b.dataset.turn === 'b') === (an.turn === BLACK)));
+    document.querySelectorAll('[data-castle]').forEach(cb => {
+      const ok = castleAllowed(cb.dataset.castle);
+      cb.disabled = !ok;
+      cb.checked = ok && an.castle.has(cb.dataset.castle);
+    });
+    if (document.activeElement !== $('edFen')) $('edFen').value = editorFen();
+    $('edTextHelp').textContent = t(nl() === 'es' ? 'piecesTextHelpEs' : 'piecesTextHelpEn');
+    $('edText').placeholder = nl() === 'es' ? 'Rg1 Tc3 Ph7 rg8' : 'Kg1 Rc3 Ph7 kg8';
+    const msg = $('editMsg');
+    msg.textContent = an.msg || t('posOk');
+    msg.className = 'edit-msg ' + (an.msg ? 'error' : 'ok');
+    if (flash) { msg.classList.remove('flash'); void msg.offsetWidth; msg.classList.add('flash'); }
+  }
+
+  $('palette').addEventListener('click', e => {
+    const b = e.target.closest('[data-tool]');
+    if (b && state.an) { state.an.tool = b.dataset.tool; renderEditPanel(); }
+  });
+  $('edTurn').addEventListener('click', e => {
+    const b = e.target.closest('[data-turn]');
+    if (b && state.an) { state.an.turn = b.dataset.turn === 'b' ? BLACK : WHITE; editChanged(); renderStatus(); }
+  });
+  document.querySelectorAll('[data-castle]').forEach(cb => cb.addEventListener('change', () => {
+    if (!state.an) return;
+    if (cb.checked) state.an.castle.add(cb.dataset.castle); else state.an.castle.delete(cb.dataset.castle);
+    editChanged();
+  }));
+  $('edText').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (addPiecesFromText($('edText').value)) $('edText').value = ''; } });
+  $('edFen').addEventListener('change', () => loadFenText($('edFen').value));
+  $('edFen').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); loadFenText($('edFen').value); } });
+
+  function loadFenText(text) {
+    const pos = parseFen(text);
+    if (!pos) { state.an.msg = t('errFen'); renderEditPanel(true); return false; }
+    Object.assign(state.an, { board: pos.board, turn: pos.turn, castle: pos.castle });
+    $('edFen').blur();
+    editChanged();
+    return true;
+  }
+
+  $('editPanel').addEventListener('click', e => {
+    const b = e.target.closest('[data-ed]');
+    if (!b || !state.an) return;
+    const an = state.an;
+    switch (b.dataset.ed) {
+      case 'clear': an.board = new Int8Array(128); an.castle.clear(); editChanged(); break;
+      case 'start': loadFenText(START_FEN); break;
+      case 'flip': state.flipped = !state.flipped; renderBoard(); break;
+      case 'text': if (addPiecesFromText($('edText').value)) $('edText').value = ''; break;
+      case 'copy': {
+        const fen = editorFen();
+        const done = () => toast('fenCopied');
+        const fallback = () => { const i = $('edFen'); i.value = fen; i.focus(); i.select(); try { document.execCommand('copy'); done(); } catch (err) { toast('copyManually'); } };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(fen).then(done, fallback);
+        else fallback();
+        break;
+      }
+      case 'paste': {
+        const manual = () => { const i = $('edFen'); i.value = ''; i.focus(); toast('pasteHere'); };
+        if (navigator.clipboard && navigator.clipboard.readText) {
+          navigator.clipboard.readText().then(txt => { if (!txt || !loadFenText(txt)) manual(); }, manual);
+        } else manual();
+        break;
+      }
+      case 'done': {
+        an.msg = validatePosition();
+        if (an.msg) { renderEditPanel(true); Sound.play('error'); return; }
+        const fen = editorFen();
+        store.set('analysisFen', fen);
+        state.startFen = fen;
+        state.game = new Core.Chess(fen);
+        an.edit = false;
+        const st = state.game.status();
+        state.over = st.over ? Object.assign({ over: true }, st) : null;
+        if (st.over) state.strip = { kind: 'anInfo', text: t(st.reason === 'checkmate' ? 'anNoMovesMate' : 'anNoMovesStalemate') };
+        window.scrollTo(0, 0);
+        renderGame();
+        break;
+      }
+    }
+  });
+
+  // Engine evaluation, from White's point of view, in words.
+  function evalText(score, turn) {
+    const MATE = Core.MATE;
+    if (Math.abs(score) > MATE - 500) {
+      const n = Math.max(1, Math.ceil((MATE - Math.abs(score)) / 2));
+      const winner = score > 0 ? turn : turn ^ BLACK;
+      return { num: (winner === WHITE ? '+' : '−') + 'M' + n, text: tf('mateFor', { side: sideName(winner), n }) };
+    }
+    const w = (turn === WHITE ? score : -score) / 100;
+    let num = (w > 0.05 ? '+' : w < -0.05 ? '−' : '') + Math.abs(w).toFixed(1);
+    if (state.lang === 'es') num = num.replace('.', ',');
+    const a = Math.abs(w), side = sideName(w > 0 ? WHITE : BLACK);
+    const text = a < 0.5 ? t('evalEqual') : tf(a < 1.5 ? 'evalSlightly' : a < 3 ? 'evalBetter' : 'evalWinning', { side });
+    return { num, text };
+  }
+
+  function analysisBest() {
+    if (state.mode !== 'analysis' || isEditing() || state.busy || state.over) return;
+    const token = ++state.token;
+    const fen = state.game.fen();
+    state.busy = true;
+    state.hint = null;
+    state.strip = { kind: 'anThinking', limit: ANALYSIS_MS };
+    renderGame();
+    Engine.request({ type: 'explain', fen, moves: [], depth: 30, time: ANALYSIS_MS }).then(res => {
+      if (token !== state.token || res.cancelled) return;
+      state.busy = false;
+      const g = new Core.Chess(fen);
+      const results = res.results || [];
+      const ex = results.length ? Coach.explainBest(g, results, res.threat, 30, state.lang, nl()) : null;
+      if (!ex) { state.strip = null; renderGame(); return; }
+      state.hint = { from: ex.from, to: ex.to };
+      state.strip = { kind: 'anResult', ex, results: results.slice(0, 3), fen, depth: res.depth || 0, turn: g.turn };
+      renderGame();
+    });
+  }
+
+  function analysisResultHTML(s) {
+    const g = new Core.Chess(s.fen), legal = g.moves();
+    const key = 'an:' + s.fen;
+    const rows = s.results.map((r, i) => {
+      const ev = evalText(r.score, s.turn);
+      return `<li class="${i === 0 ? 'best' : ''}"><span class="cand-move">${esc(san(g.san(r.move, legal)))}</span>` +
+        `<span class="cand-num">${esc(ev.num)}</span><span class="cand-text">${esc(ev.text)}</span></li>`;
+    }).join('');
+    const body = s.ex.sentences.map(x => renderTokens(x)).join(' ');
+    return `<div class="strip-line"><b>${esc(t('bestMoveIs'))}</b> <span class="strip-move">${esc(san(s.ex.san))}</span>` +
+      (s.depth ? ` <span class="depth">${esc(tf('depthN', { n: s.depth }))}</span>` : '') + `</div>
+      <ol class="cands">${rows}</ol>
+      <div class="cpara" data-key="${esc(key)}"><p>${body}</p><div class="term-slot">${slotHTML(key)}</div></div>
+      <div class="strip-actions">
+        <button type="button" class="btn small primary" data-strip="anPlay">▶ ${esc(t('playIt'))}</button>
+        <button type="button" class="btn small" data-strip="hide">${esc(t('close'))}</button>
+      </div>`;
+  }
+
+  // ---------------------------------------------------------------- challenge statistics
+  function renderChStats() {
+    const s = chStats();
+    const solvedN = Object.keys(s.solved).length;
+    $('btnResetCh').disabled = !s.played && !solvedN;
+    const body = $('chStatsBody');
+    if (!s.played) { body.innerHTML = `<p class="empty">${esc(t('chStatsEmpty'))}</p>`; return; }
+    const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '—';
+    let html = `<div class="stats-summary">` + tile('chSolvedCount', solvedN) + tile('chPlayed', s.played) +
+      tile('chFirstTry', pct(s.first, s.played)) + tile('chStreak', s.cur) + tile('chBestStreak', s.best) + '</div>';
+    const table = (title, keys, nameOf, obj) => `<div class="table-scroll"><table class="stats-table">` +
+      `<tr><th>${esc(title)}</th><th>${esc(t('chPlayed'))}</th><th>${esc(t('chSolvedCol'))}</th><th>${esc(t('chFirstTry'))}</th></tr>` +
+      keys.map(k => { const r = obj[k] || { p: 0, s: 0, f: 0 }; return `<tr><td>${esc(nameOf(k))}</td><td>${r.p}</td><td>${r.s}</td><td>${pct(r.f, r.p)}</td></tr>`; }).join('') +
+      '</table></div>';
+    html += table(t('chCategory'), CATS, k => t(CAT_NAME[k]), s.cat);
+    html += table(t('level'), [0, 1, 2, 3, 4], k => t(LEVEL_KEY[LEVELS[k]]), s.lvl);
+    body.innerHTML = html;
+  }
+  $('btnResetCh').addEventListener('click', () => {
+    ask('resetChTitle', t('resetChConfirm'), [
+      { key: 'resetYes', cls: 'danger', fn: () => { store.remove('challengeStats'); store.remove('challengeDeck'); seenThisSession.clear(); renderStats(); toast('resetDone'); } },
+      { key: 'cancel' }
+    ]);
+  });
 
   // ---------------------------------------------------------------- menu & setup
   function renderMenu() {
@@ -1394,6 +2123,7 @@
   const tile = (k, v) => `<div class="stat-tile"><div class="v">${v}</div><div class="k">${esc(t(k))}</div></div>`;
 
   function renderStats() {
+    renderChStats();
     document.querySelectorAll('#statsColor button').forEach(b => b.classList.toggle('selected', b.dataset.scolor === state.statsColor));
     const all = loadStats();
     const coach = Object.assign({ great: 0, accurate: 0, good: 0, blunder: 0, bestUsed: 0 }, store.get('coachStats', {}));

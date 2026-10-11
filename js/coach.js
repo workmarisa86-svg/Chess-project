@@ -814,5 +814,5 @@ const Coach = (() => {
     return { move: best.move, from: info.from, to: info.to, san: info.san, sentences: out.slice(0, 3) };
   }
 
-  return { rateMove, explainBest, openingAt, winPct, termOf, moveInfo };
+  return { rateMove, explainBest, openingAt, winPct, termOf, moveInfo, detectTactics, lineGain };
 })();
