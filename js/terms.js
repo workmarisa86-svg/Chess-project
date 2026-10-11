@@ -181,6 +181,21 @@ const TERMS = {
     es: { n: 'material insuficiente', a: '', d: 'Cuando ningún bando tiene piezas suficientes para dar mate (por ejemplo, rey y alfil contra rey), la partida es tablas.', w: 'Saber qué finales son tablas te ayuda a decidir qué cambiar.', x: 'Rey y alfil contra rey solo no pueden forzar el mate: tablas.' },
     demo: { fen: '8/8/3k4/8/8/4KB2/8/8 w - - 0 1', arrows: [], marks: [] }
   },
+  chessClock: {
+    cat: 'rule',
+    en: { n: 'chess clock', a: 'a', d: 'Two clocks that count down each player’s thinking time. A time control like 5+3 means 5 minutes each, plus 3 seconds added after every move (the increment).', w: 'It keeps games moving and teaches you to manage your time. If your time runs out you lose — unless your opponent cannot possibly give checkmate, which is a draw.', x: 'In a 3+2 game you start with 3 minutes and gain 2 seconds each time you move.' },
+    es: { n: 'reloj de ajedrez', a: 'un', d: 'Dos relojes que descuentan el tiempo de reflexión de cada jugador. Un ritmo como 5+3 significa 5 minutos por jugador y 3 segundos más tras cada jugada (el incremento).', w: 'Mantiene la partida en marcha y te enseña a administrar el tiempo. Si se te acaba el tiempo pierdes, salvo que el rival no pueda dar mate de ninguna forma: entonces son tablas.', x: 'En una partida 3+2 empiezas con 3 minutos y ganas 2 segundos cada vez que juegas.' }
+  },
+  resign: {
+    cat: 'rule',
+    en: { n: 'resigning', a: '', d: 'Ending the game yourself by admitting defeat, without waiting to be checkmated. The opponent wins.', w: 'Players resign when the position is hopeless; it saves time. Against beginners it is often better to play on — mistakes happen!', x: 'A player who is a queen and a rook down, with no counterplay, resigns.' },
+    es: { n: 'abandonar', a: '', d: 'Terminar la partida uno mismo reconociendo la derrota, sin esperar al jaque mate. Gana el rival.', w: 'Se abandona cuando la posición no tiene remedio; ahorra tiempo. Entre principiantes muchas veces conviene seguir jugando: ¡los errores ocurren!', x: 'Un jugador con una dama y una torre de menos, sin contrajuego, abandona.' }
+  },
+  drawAgreement: {
+    cat: 'rule',
+    en: { n: 'draw by agreement', a: 'a', d: 'One player offers a draw and the other accepts, so the game ends without a winner.', w: 'Useful when the position is equal and neither side can make progress.', x: 'In an endgame with one rook each and pawns on the same side, the players agree to a draw.' },
+    es: { n: 'tablas por acuerdo', a: '', d: 'Un jugador ofrece tablas y el otro las acepta, y la partida termina sin ganador.', w: 'Útil cuando la posición está igualada y ninguno puede progresar.', x: 'En un final con una torre por bando y peones en el mismo flanco, los jugadores acuerdan tablas.' }
+  },
   notation: {
     cat: 'rule',
     en: { n: 'algebraic notation', a: '', d: 'The standard way to write moves: piece letter (K king, Q queen, R rook, B bishop, N knight, nothing for pawns) plus the square. "x" means capture, "+" check, "#" checkmate, O-O castling.', w: 'It lets you record games, read books, and replay what happened.', x: 'Nf3 = knight to f3; Bxc6 = bishop captures on c6; exd5 = the e-pawn captures on d5.' },
@@ -254,36 +269,26 @@ const TERMS = {
     es: { n: 'valor de las piezas', a: 'el', d: 'Una guía de cuánto vale cada pieza: peón 1, caballo 3, alfil 3, torre 5, dama 9. El rey no tiene precio.', w: 'Te ayuda a valorar los cambios: dar un caballo (3) por una torre (5) es buen negocio.', x: 'Capturar una torre con un alfil gana unos 2 puntos de material.' }
   },
 
-  // ---------------- Move ratings ----------------
-  brilliant: {
-    cat: 'rating',
-    en: { n: 'Brilliant', a: 'a', d: 'The best move, and it involves a clever sacrifice or a move that is very hard to find.', w: 'Brilliant moves win games that look "normal" on the surface.', x: 'Sacrificing a rook to force checkmate a few moves later.' },
-    es: { n: 'Brillante', a: 'una jugada', d: 'La mejor jugada, e incluye un sacrificio ingenioso o una idea muy difícil de encontrar.', w: 'Las jugadas brillantes ganan partidas que en apariencia son "normales".', x: 'Sacrificar una torre para forzar el mate pocas jugadas después.' }
-  },
+  // ---------------- Move ratings (used by the coach) ----------------
   great: {
     cat: 'rating',
-    en: { n: 'Great move', a: 'a', d: 'The best move in a position where it really mattered — a tactic, or the only good move.', w: 'Finding these moves is what separates strong players from average ones.', x: 'Spotting a fork that wins the opponent’s queen.' },
-    es: { n: 'Gran jugada', a: 'una', d: 'La mejor jugada en una posición donde era importante: una táctica o la única jugada buena.', w: 'Encontrar estas jugadas es lo que distingue a los jugadores fuertes.', x: 'Ver una horquilla que gana la dama rival.' }
+    en: { n: 'Great', a: 'a', d: 'Your move was the best one in the position, or just as strong as the best.', w: 'Finding the best move again and again is exactly what strong players do.', x: 'Spotting a fork that wins the opponent’s queen, or simply the most solid developing move.' },
+    es: { n: 'Excelente', a: 'una jugada', d: 'Tu jugada fue la mejor de la posición, o igual de fuerte que la mejor.', w: 'Encontrar la mejor jugada una y otra vez es justo lo que hacen los jugadores fuertes.', x: 'Ver una horquilla que gana la dama rival, o simplemente la jugada de desarrollo más sólida.' }
+  },
+  accurate: {
+    cat: 'rating',
+    en: { n: 'Accurate', a: 'an', d: 'Almost the best move: the difference is so small it hardly matters.', w: 'Accurate moves keep your position as good as it was; you are playing precisely.', x: 'Developing your knight to c3 when f3 was a tiny bit better.' },
+    es: { n: 'Precisa', a: 'una jugada', d: 'Casi la mejor jugada: la diferencia es tan pequeña que apenas importa.', w: 'Las jugadas precisas mantienen tu posición igual de buena: estás jugando con exactitud.', x: 'Desarrollar el caballo a c3 cuando f3 era un poquito mejor.' }
   },
   good: {
     cat: 'rating',
-    en: { n: 'Good move', a: 'a', d: 'A solid move that keeps your position healthy — the best move or very close to it.', w: 'Consistently good moves win games against most opponents.', x: 'Developing a knight toward the center in the opening.' },
-    es: { n: 'Buena jugada', a: 'una', d: 'Una jugada sólida que mantiene tu posición sana: la mejor o muy cerca de ella.', w: 'Hacer buenas jugadas con regularidad gana partidas contra la mayoría de rivales.', x: 'Desarrollar un caballo hacia el centro en la apertura.' }
-  },
-  inaccuracy: {
-    cat: 'rating',
-    en: { n: 'Inaccuracy', a: 'an', d: 'A playable move, but a better one was available. It gives away a small part of your advantage.', w: 'Inaccuracies add up; spotting them helps you play more precisely.', x: 'Moving a pawn on the edge when developing a piece was more useful.' },
-    es: { n: 'Imprecisión', a: 'una', d: 'Una jugada aceptable, pero había otra mejor. Cedes una pequeña parte de tu ventaja.', w: 'Las imprecisiones se acumulan; detectarlas te ayuda a jugar con más precisión.', x: 'Mover un peón de la banda cuando era más útil desarrollar una pieza.' }
-  },
-  mistake: {
-    cat: 'rating',
-    en: { n: 'Mistake', a: 'a', d: 'A bad move that noticeably worsens your position, often allowing a tactic or losing material.', w: 'Learning why it was a mistake is the fastest way to improve.', x: 'Moving a defender away so an enemy piece can win a pawn or the exchange.' },
-    es: { n: 'Error', a: 'un', d: 'Una mala jugada que empeora claramente tu posición; a menudo permite una táctica o pierde material.', w: 'Entender por qué fue un error es la forma más rápida de mejorar.', x: 'Retirar un defensor y permitir que una pieza rival gane un peón o la calidad.' }
+    en: { n: 'Good', a: 'a', d: 'A reasonable move that gives away a small or moderate part of your advantage.', w: 'Good moves keep you in the game; use Best move afterwards to see what was stronger.', x: 'Moving a pawn on the edge when developing a piece was more useful.' },
+    es: { n: 'Buena', a: 'una jugada', d: 'Una jugada razonable que cede una parte pequeña o moderada de tu ventaja.', w: 'Las jugadas buenas te mantienen en la partida; usa «Mejor jugada» para ver qué era más fuerte.', x: 'Mover un peón de la banda cuando era más útil desarrollar una pieza.' }
   },
   blunder: {
     cat: 'rating',
-    en: { n: 'Blunder', a: 'a', d: 'A serious mistake that loses a lot of material or allows checkmate.', w: 'Before every move, check for checks, captures and threats — that prevents most blunders.', x: 'Leaving your queen where a pawn can capture it.' },
-    es: { n: 'Error grave', a: 'un', d: 'Un error serio que pierde mucho material o permite el jaque mate.', w: 'Antes de cada jugada revisa jaques, capturas y amenazas: así se evitan la mayoría de errores graves.', x: 'Dejar tu dama donde un peón puede capturarla.' }
+    en: { n: 'Blunder', a: 'a', d: 'A clear mistake that makes your position significantly worse, for example by losing material or allowing checkmate.', w: 'Before every move, check for checks, captures and threats — that prevents most blunders. The coach lets you take it back.', x: 'Leaving your queen where a pawn can capture it.' },
+    es: { n: 'Error grave', a: 'un', d: 'Un error claro que empeora mucho tu posición, por ejemplo perdiendo material o permitiendo el jaque mate.', w: 'Antes de cada jugada revisa jaques, capturas y amenazas: así se evitan la mayoría de errores graves. El entrenador te deja retroceder.', x: 'Dejar tu dama donde un peón puede capturarla.' }
   },
 
   // ---------------- Openings ----------------
