@@ -285,7 +285,13 @@ const UI_STRINGS = {
     chSolvedCol: "Solved",
     resetCh: "Reset challenge statistics",
     resetChTitle: "Reset challenge statistics?",
-    resetChConfirm: "Your challenge progress, accuracy and streaks will be deleted. Game statistics are kept."
+    resetChConfirm: "Your challenge progress, accuracy and streaks will be deleted. Game statistics are kept.",
+    chLevelDone: "level complete! 🎉",
+    chLevelDoneTitle: "Level complete: {where}",
+    chNextLevel: "Next level: {level}",
+    chPlayAgain: "Play again",
+    chCategoryDone: "You’ve finished every level in {cat}! 🏆",
+    chChooseCategory: "Choose another category"
   },
   es: {
     appTitle: "Entrenador de Ajedrez",
@@ -572,7 +578,13 @@ const UI_STRINGS = {
     chSolvedCol: "Resueltos",
     resetCh: "Borrar estadísticas de ejercicios",
     resetChTitle: "¿Borrar las estadísticas de ejercicios?",
-    resetChConfirm: "Se borrarán tu progreso, tu precisión y tus rachas en los ejercicios. Las estadísticas de partidas se conservan."
+    resetChConfirm: "Se borrarán tu progreso, tu precisión y tus rachas en los ejercicios. Las estadísticas de partidas se conservan.",
+    chLevelDone: "¡nivel completado! 🎉",
+    chLevelDoneTitle: "Nivel completado: {where}",
+    chNextLevel: "Siguiente nivel: {level}",
+    chPlayAgain: "Jugar otra vez",
+    chCategoryDone: "¡Has completado todos los niveles de {cat}! 🏆",
+    chChooseCategory: "Elegir otra categoría"
   }
 };
 
