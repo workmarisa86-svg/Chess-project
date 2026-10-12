@@ -17,6 +17,7 @@ const path = require('path');
 const L = require('./challenge-lib.js');
 const { Core, Coach, BOOK_LINES, S } = L;
 
+const MIN_LEVEL = +(process.env.MIN_LEVEL || 0);
 const LEVELS = ['beginner', 'easy', 'medium', 'hard', 'impossible'];
 const out = [];
 const seen = new Set();
@@ -186,14 +187,16 @@ function addOpeningBlunders(limit, minutes) {
       g.make(b);
       const fen = g.fen();
       g.undo();
-      const sol = L.solve(fen, { depth: 6, time: 3000, maxUser: 4 });
-      if (!sol) continue;
+      const sol = L.solve(fen, { depth: 6, time: 3000, maxUser: MIN_LEVEL ? 6 : 4 });
+      if (!sol || (MIN_LEVEL && sol.userMoves < 2 && sol.goal !== 'mate')) continue;
       const side = { en: g.turn === 0 ? 'White' : 'Black', es: g.turn === 0 ? 'las blancas' : 'las negras' };
       const lead = {
         en: (op ? `From the [[the:${op}]]. ` : '') + `${side.en}’s last move, {{${bsan}}}, was a mistake.`,
         es: (op ? `De [[the:${op}]]. ` : '') + `La última jugada de ${side.es}, {{${bsan}}}, fue un error.`
       };
-      if (add(makePuzzle('o', fen, sol, { lead }))) kept++;
+      const pz = makePuzzle('o', fen, sol, { lead });
+      if (pz.l < MIN_LEVEL) continue; // MIN_LEVEL=2: only longer combinations (for the harder levels)
+      if (add(pz)) kept++;
     }
   }
   log(`opening blunders: ${kept} (${tried.size} positions)`);
@@ -238,6 +241,13 @@ const GAMES = [
     starts: [[20, 15], [26, 9], [28, 7], [30, 5], [32, 3]]
   },
   {
+    en: 'Légal’s Mate, the trap named after Kermur de Légal (18th century)',
+    es: 'El mate de Légal, la trampa que lleva el nombre de Kermur de Légal (siglo XVIII)',
+    moves: 'e4 e5 Nf3 d6 Bc4 Bg4 Nc3 g6 Nxe5 Bxd1 Bxf7+ Ke7 Nd5#',
+    result: { en: 'Black grabbed the queen and was checkmated by the minor pieces.', es: 'Las negras se comieron la dama y recibieron mate de las piezas menores.' },
+    starts: [[10, 3]]
+  },
+  {
     en: 'Donald Byrne vs. Bobby Fischer, New York 1956 (the “Game of the Century”)',
     es: 'Donald Byrne contra Bobby Fischer, Nueva York 1956 (la “Partida del Siglo”)',
     moves: 'Nf3 Nf6 c4 g6 Nc3 Bg7 d4 O-O Bf4 d5 Qb3 dxc4 Qxc4 c6 e4 Nbd7 Rd1 Nb6 Qc5 Bg4 Bg5 Na4 Qa3 Nxc3 bxc3 Nxe4 Bxe7 Qb6 Bc4 Nxc3 Bc5 Rfe8+ Kf1 Be6 Bxb6 Bxc4+ Kg1 Ne2+ Kf1 Nxd4+ Kg1 Ne2+ Kf1 Nc3+ Kg1 axb6',
@@ -251,7 +261,12 @@ function addGames() {
   for (const game of GAMES) {
     const all = game.moves.split(' ');
     try { L.playSans(all); } catch (e) { log('GAME ILLEGAL', game.en, e.message); continue; }
-    for (const [ply, len] of game.starts) {
+    // the listed moments, plus every move of the winner in the last 20 plies (played to the end)
+    const starts = game.starts.slice();
+    for (let ply = all.length - 1; ply >= Math.max(0, all.length - 21); ply -= 2) {
+      if (!starts.some(([p]) => p === ply)) starts.push([ply, all.length - ply]);
+    }
+    for (const [ply, len] of starts) {
       const g = L.playSans(all.slice(0, ply));
       const fen = g.fen();
       const solSans = all.slice(ply, ply + len);
@@ -498,6 +513,31 @@ if (minedFiles.length) loadMined(minedFiles);
 // Themes without a glossary entry of their own.
 const THEME_ALIAS = { mateThreat: 'threat', backRankThreat: 'backRankMate', square: 'ruleOfSquare', kp: 'kingPawnEnding', kpDraw: 'kingPawnEnding' };
 for (const p of out) if (THEME_ALIAS[p.t]) p.t = THEME_ALIAS[p.t];
+// Every category needs puzzles at every level, so finishing one level always leads to the next.
+const diff = p => [p.l, p.s.split(' ').length, p.g.charAt(0) === 'm' && p.g !== 'mat' ? +p.g.slice(1) : 0];
+const cmp = (a, b) => { const x = diff(a), y = diff(b); return x[0] - y[0] || x[1] - y[1] || x[2] - y[2]; };
+// Master games are few: keep their difficulty order and split them evenly over the five levels.
+const games = out.filter(p => p.c === 'g').sort(cmp);
+games.forEach((p, i) => { p.l = Math.min(4, Math.floor(i * 5 / games.length)); });
+// Elsewhere an under-filled level takes puzzles from the nearest level with some to spare: the
+// level boundaries move along the difficulty order, so only the closest puzzles change level.
+const MIN_PER_LEVEL = 6;
+for (const cat of ['o', 't', 'e']) {
+  const list = out.filter(p => p.c === cat).sort(cmp);
+  if (list.length < 5 * MIN_PER_LEVEL) continue;
+  const n = [0, 0, 0, 0, 0];
+  list.forEach(p => n[p.l]++);
+  for (let guard = 0; guard < 500; guard++) {
+    const l = n.findIndex(x => x < MIN_PER_LEVEL);
+    if (l < 0) break;
+    let k = -1;
+    for (let d = 1; d < 5 && k < 0; d++) for (const c of [l - d, l + d]) if (k < 0 && c >= 0 && c < 5 && n[c] > MIN_PER_LEVEL) k = c;
+    if (k < 0) break;
+    n[k]--; n[l]++;
+  }
+  let i = 0;
+  n.forEach((cnt, l) => { for (let j = 0; j < cnt; j++) list[i++].l = l; });
+}
 // Shuffle and give stable ids.
 out.sort(() => rand() - 0.5);
 // Ids come from the position, so saved progress survives future rebuilds.

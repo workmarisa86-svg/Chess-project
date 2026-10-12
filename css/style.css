@@ -639,3 +639,7 @@ button { font: inherit; color: inherit; }
 .depth { color: var(--muted); font-size: .8rem; }
 .ch-stats { margin-top: 26px; }
 .pz-after { padding-top: 6px; border-top: 1px dashed var(--border); }
+.level-done { margin: -2px 0 8px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, #ffc107 22%, var(--surface)); border: 1px solid color-mix(in srgb, #e9b72e 60%, var(--border)); }
+#chLevels button.done::after { content: " ✓"; color: var(--c-great); font-weight: 800; }
+#chLevels button.empty { opacity: .5; }
+.btn.next-level { margin-top: 10px; border-color: var(--accent); color: var(--accent); }

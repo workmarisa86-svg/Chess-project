@@ -39,7 +39,9 @@ Just open `index.html`.
   replies and you continue. A correct solution shows a short explanation, the theme (with a glossary
   dropdown), a *Did you know?* fact and, for master games, what was actually played. A wrong move
   offers *Try again*, *Hint* (highlights the piece to move) and *Show answer*. Optional timer, *Skip*,
-  and random order without repeats until everything is solved.
+  and random order without repeats until everything is solved. Every category has puzzles at every
+  level: when you solve the last puzzle of a level, it says *Level complete* and offers *Next level*
+  (the Challenge screen also ticks finished levels ✓ and shows a *Next level* button).
 - **Analysis board** (inside Challenge): set up any position with a palette of pieces and an eraser,
   by typing (e.g. `Kg1 Rc3 Ph7 kg8`) or with a FEN (Copy/Paste). Clear, Start position, Flip, side to
   move and castling rights. Friendly checks (no pawns on the first/last rank, one king each, kings not

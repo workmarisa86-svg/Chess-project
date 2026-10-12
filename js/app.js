@@ -951,6 +951,8 @@
       case 'pzHint': puzzleHint(); break;
       case 'pzAnswer': puzzleShowAnswer(); break;
       case 'pzNext': nextPuzzle(); break;
+      case 'pzNextLevel': goToLevel(+b.dataset.level); break;
+      case 'pzHub': history.back(); break;
       case 'anCancel':
         state.token++; Engine.cancel(); state.busy = false; state.strip = null; renderGame();
         break;
@@ -1014,7 +1016,7 @@
         break;
       case 'pzSolved':
       case 'pzAnswer':
-        html = puzzleResultHTML(s.kind);
+        html = puzzleResultHTML(s);
         break;
       case 'anThinking':
         html = `<div class="strip-line pending">${esc(t('analyzing'))}</div>
@@ -1406,6 +1408,23 @@
     return pool.find(p => p.i === id) || pool[0];
   }
 
+  // Levels: a level is complete when every puzzle in it is solved; the next
+  // level is the next one up in the same category that has puzzles.
+  const poolOf = (all, cat, lvl) => all.filter(p => p.c === cat && p.l === lvl);
+  function levelDone(cat, lvl) {
+    const pool = poolOf(window.CHALLENGES || [], cat, lvl), solved = chStats().solved;
+    return pool.length > 0 && pool.every(p => solved[p.i]);
+  }
+  function nextLevelFor(cat, lvl) {
+    for (let l = lvl + 1; l <= 4; l++) if (poolOf(window.CHALLENGES || [], cat, l).length) return l;
+    return -1;
+  }
+  function goToLevel(lvl) {
+    chSetup.level = lvl;
+    saveChSetup();
+    nextPuzzle();
+  }
+
   function nextPuzzle() {
     loadPuzzles().then(all => {
       const p = pickPuzzle(all);
@@ -1519,11 +1538,13 @@
     pz.auto = false;
     pz.t = performance.now() - pz.t0;
     state.hintSq = -1;
+    const wasDone = levelDone(pz.p.c, pz.p.l);
     if (!pz.recorded) {
       pz.recorded = true;
       recordChallenge(pz.p, pz.failed ? 'failed' : (pz.mistakes || pz.hints) ? 'solved' : 'first');
     }
-    state.strip = { kind: pz.failed ? 'pzAnswer' : 'pzSolved' };
+    // This solve finished the whole level: offer the next one.
+    state.strip = { kind: pz.failed ? 'pzAnswer' : 'pzSolved', levelDone: !wasDone && levelDone(pz.p.c, pz.p.l) };
     if (!pz.failed && !state.over) Sound.play('notify');
     nextFact();
     $('endFact').hidden = false;
@@ -1541,8 +1562,8 @@
   // Explanations: {{Nf3}} marks a move (shown in the chosen notation), [[term]] a glossary term.
   const puzzleText = str => renderTokens(esc(str).replace(/\{\{([^}]+)\}\}/g, (_, x) => `<b class="mv">${esc(san(x))}</b>`));
 
-  function puzzleResultHTML(kind) {
-    const pz = state.pz, p = pz.p, L = state.lang;
+  function puzzleResultHTML(s) {
+    const kind = s.kind, pz = state.pz, p = pz.p, L = state.lang;
     const key = 'pz:' + p.i;
     const head = kind === 'pzSolved' ?
       `<span class="rate-pill r-great">✓ ${esc(t(pz.mistakes || pz.hints ? 'pzSolved' : 'pzCorrect'))}</span>` :
@@ -1553,9 +1574,21 @@
     if (TERMS[p.t]) body += `<p class="pz-theme">${esc(t('theme'))}: ${renderTokens('[[C:' + p.t + ']]')}</p>`;
     body += `<p>${puzzleText(p[L] || p.en)}</p>`;
     if (p.a) body += `<p class="pz-after">${puzzleText(p.a[L] || p.a.en)}</p>`;
-    return `<div class="strip-line">${head}${time}</div>
+    let banner = '', actions = `<button type="button" class="btn small primary" data-strip="pzNext">→ ${esc(t('next'))}</button>`;
+    if (s.levelDone) {
+      const next = nextLevelFor(p.c, p.l);
+      const where = `${t(CAT_NAME[p.c])} · ${t(LEVEL_KEY[LEVELS[p.l]])}`;
+      banner = `<div class="level-done">🎉 <b>${esc(tf('chLevelDoneTitle', { where }))}</b>` +
+        (next < 0 ? `<br>${esc(tf('chCategoryDone', { cat: t(CAT_NAME[p.c]) }))}` : '') + '</div>';
+      actions = next >= 0 ?
+        `<button type="button" class="btn small primary" data-strip="pzNextLevel" data-level="${next}">${esc(tf('chNextLevel', { level: t(LEVEL_KEY[LEVELS[next]]) }))} →</button>
+         <button type="button" class="btn small" data-strip="pzNext">↻ ${esc(t('chPlayAgain'))}</button>` :
+        `<button type="button" class="btn small primary" data-strip="pzHub">${esc(t('chChooseCategory'))}</button>
+         <button type="button" class="btn small" data-strip="pzNext">↻ ${esc(t('chPlayAgain'))}</button>`;
+    }
+    return `${banner}<div class="strip-line">${head}${time}</div>
       <div class="cpara" data-key="${key}">${body}<div class="term-slot">${slotHTML(key)}</div></div>
-      <div class="strip-actions"><button type="button" class="btn small primary" data-strip="pzNext">→ ${esc(t('next'))}</button></div>`;
+      <div class="strip-actions">${actions}</div>`;
   }
 
   // ---------------------------------------------------------------- challenge screen
@@ -1581,11 +1614,22 @@
       const list = all.filter(p => p.c === b.dataset.cat);
       b.querySelector('small').textContent = tf('chSolvedShort', { s: list.filter(p => solved[p.i]).length, n: list.length });
     });
-    const pool = all.filter(p => p.c === chSetup.cat && p.l === chSetup.level);
+    document.querySelectorAll('#chLevels [data-l]').forEach(b => {
+      const n = poolOf(all, chSetup.cat, +b.dataset.l).length;
+      b.classList.toggle('done', levelDone(chSetup.cat, +b.dataset.l));
+      b.classList.toggle('empty', !n);
+    });
+    const pool = poolOf(all, chSetup.cat, chSetup.level);
     const done = pool.filter(p => solved[p.i]).length;
-    $('chProgressText').textContent = pool.length ? tf('chProgress', { s: done, n: pool.length }) : t('chNone');
+    const complete = pool.length > 0 && done === pool.length;
+    const next = nextLevelFor(chSetup.cat, chSetup.level);
+    $('chProgressText').textContent = !pool.length ? t('chNone') :
+      tf('chProgress', { s: done, n: pool.length }) + (complete ? ' — ' + t('chLevelDone') : '');
     $('chProgressBar').style.width = pool.length ? (done / pool.length * 100) + '%' : '0';
     $('btnChStart').disabled = !pool.length;
+    $('btnChStart').textContent = t(complete ? 'chPlayAgain' : 'chStart');
+    $('btnChNextLevel').hidden = !complete || next < 0;
+    if (next >= 0) $('btnChNextLevel').textContent = tf('chNextLevel', { level: t(LEVEL_KEY[LEVELS[next]]) }) + ' →';
   }
   $('chCats').addEventListener('click', e => {
     const b = e.target.closest('[data-cat]');
@@ -1597,6 +1641,7 @@
   });
   $('chTimer').addEventListener('change', e => { chSetup.timer = e.target.checked; saveChSetup(); });
   $('btnChStart').addEventListener('click', nextPuzzle);
+  $('btnChNextLevel').addEventListener('click', () => { const n = nextLevelFor(chSetup.cat, chSetup.level); if (n >= 0) goToLevel(n); });
   $('btnAnalysis').addEventListener('click', () => startAnalysis());
 
   // ---------------------------------------------------------------- analysis board
