@@ -291,7 +291,21 @@ const UI_STRINGS = {
     chNextLevel: "Next level: {level}",
     chPlayAgain: "Play again",
     chCategoryDone: "You’ve finished every level in {cat}! 🏆",
-    chChooseCategory: "Choose another category"
+    chChooseCategory: "Choose another category",
+    lessons: "Lessons",
+    lessonsIntro: "A short course in nine chapters: read each lesson step by step, then try it yourself on the board.",
+    chapterN: "Chapter {n}",
+    lessonsRead: "{r} of {n} lessons read",
+    lessonRead: "Read",
+    lessonPracticed: "Practiced",
+    stepOf: "Step {a} of {n}",
+    prevStep: "Previous step",
+    nextStep: "Next step",
+    yourTurn: "Your turn",
+    nextLesson: "Next lesson",
+    backToLesson: "Back to the lesson",
+    practiceMore: "Practice with puzzles",
+    practiceAnother: "Another puzzle"
   },
   es: {
     appTitle: "Entrenador de Ajedrez",
@@ -584,7 +598,21 @@ const UI_STRINGS = {
     chNextLevel: "Siguiente nivel: {level}",
     chPlayAgain: "Jugar otra vez",
     chCategoryDone: "¡Has completado todos los niveles de {cat}! 🏆",
-    chChooseCategory: "Elegir otra categoría"
+    chChooseCategory: "Elegir otra categoría",
+    lessons: "Lecciones",
+    lessonsIntro: "Un curso breve en nueve capítulos: lee cada lección paso a paso y luego pruébalo tú en el tablero.",
+    chapterN: "Capítulo {n}",
+    lessonsRead: "{r} de {n} lecciones leídas",
+    lessonRead: "Leída",
+    lessonPracticed: "Practicada",
+    stepOf: "Paso {a} de {n}",
+    prevStep: "Paso anterior",
+    nextStep: "Paso siguiente",
+    yourTurn: "Tu turno",
+    nextLesson: "Siguiente lección",
+    backToLesson: "Volver a la lección",
+    practiceMore: "Practicar con ejercicios",
+    practiceAnother: "Otro ejercicio"
   }
 };
 

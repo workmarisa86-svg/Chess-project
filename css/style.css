@@ -643,3 +643,19 @@ button { font: inherit; color: inherit; }
 #chLevels button.done::after { content: " ✓"; color: var(--c-great); font-weight: 800; }
 #chLevels button.empty { opacity: .5; }
 .btn.next-level { margin-top: 10px; border-color: var(--accent); color: var(--accent); }
+
+/* ---------------- Lessons ---------------- */
+.lesson-ch { margin: 20px 0 8px; font-size: .95rem; }
+.lesson-items { display: flex; flex-direction: column; gap: 6px; }
+.lesson-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: inherit; font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.lesson-item:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.lesson-item.read { background: color-mix(in srgb, var(--c-great) 7%, var(--surface)); }
+.lesson-marks { display: flex; gap: 6px; color: var(--c-great); font-weight: 800; }
+.lesson-step { color: var(--muted); font-size: .85rem; margin-bottom: 8px; }
+.lesson-board { display: flex; justify-content: center; }
+.lesson-board .mini-board { width: min(420px, 100%); --sq: 52px; }
+.lesson-text { margin: 12px 0; line-height: 1.55; }
+.lesson-term { margin: 0 0 6px; }
+.lesson-nav { display: flex; gap: 10px; }
+.lesson-nav .btn { flex: 1; min-height: 50px; font-size: 1.2rem; }
+.lesson-end .btn.big { margin-top: 12px; }

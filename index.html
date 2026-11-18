@@ -67,6 +67,9 @@
         <button type="button" class="menu-btn" data-go="challenge">
           <span class="mi" aria-hidden="true">🎯</span><span class="mt" data-i18n="challenge">Challenge</span>
         </button>
+        <button type="button" class="menu-btn" data-go="lessons">
+          <span class="mi" aria-hidden="true">📚</span><span class="mt" data-i18n="lessons">Lessons</span>
+        </button>
         <button type="button" class="menu-btn" data-go="settings">
           <span class="mi" aria-hidden="true">⚙</span><span class="mt" data-i18n="settings">Settings</span>
         </button>
@@ -280,6 +283,17 @@
     </section>
 
     <!-- ================= Challenge (Stage 2) ================= -->
+    <!-- ================= Lessons ================= -->
+    <section class="screen sub-screen" id="scrLessons" hidden>
+      <div class="sub-head"><button type="button" class="btn icon back" data-back data-i18n-aria="back" aria-label="Back">‹</button><h2 data-i18n="lessons">Lessons</h2></div>
+      <p class="hint-text" data-i18n="lessonsIntro"></p>
+      <div id="lessonList"></div>
+    </section>
+    <section class="screen sub-screen" id="scrLesson" hidden>
+      <div class="sub-head"><button type="button" class="btn icon back" data-back data-i18n-aria="back" aria-label="Back">‹</button><h2 id="lessonTitle"></h2></div>
+      <div id="lessonBody"></div>
+    </section>
+
     <section class="screen sub-screen" id="scrChallenge" hidden>
       <div class="sub-head"><button type="button" class="btn icon back" data-back data-i18n-aria="back" aria-label="Back">‹</button><h2 data-i18n="challenge">Challenge</h2></div>
       <div class="field">
