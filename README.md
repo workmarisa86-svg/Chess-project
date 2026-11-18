@@ -42,6 +42,12 @@ Just open `index.html`.
   and random order without repeats until everything is solved. Every category has puzzles at every
   level: when you solve the last puzzle of a level, it says *Level complete* and offers *Next level*
   (the Challenge screen also ticks finished levels ✓ and shows a *Next level* button).
+- **Lessons**: a short course in nine chapters (first steps, simple mates, pawn endings, winning won
+  games, opening principles, middlegame plans, tactics, rook endings and great games explained),
+  22 lessons in English and Spanish. Each lesson is a few steps with a diagram (◀ ▶), then *Your turn*
+  on the real board: the lesson's own position, checked by the engine, and Challenge puzzles on the
+  same theme. Lessons read ✓ and practiced 🎯 are remembered. The order of topics follows the classic
+  path of Capablanca's *Chess Fundamentals* (1921); the text is our own.
 - **Analysis board** (inside Challenge): set up any position with a palette of pieces and an eraser,
   by typing (e.g. `Kg1 Rc3 Ph7 kg8`) or with a FEN (Copy/Paste). Clear, Start position, Flip, side to
   move and castling rights. Friendly checks (no pawns on the first/last rank, one king each, kings not
@@ -97,6 +103,7 @@ js/facts.js      "Did you know?" facts
 js/coach.js      move ratings and best-move explanations
 js/sound.js      board sounds (synthesized, no audio files)
 js/app.js        board, controls, game flow, challenge and analysis board
+data/lessons.js  the Lessons course (loaded when Lessons opens; cached for offline use)
 data/challenges.js  the puzzles (loaded only when Challenge opens; cached for offline use)
 tools/           Node.js scripts that generate and verify the puzzles (not used by the app)
 manifest.webmanifest  app name, colors and icons for installing

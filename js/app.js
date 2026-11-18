@@ -208,7 +208,8 @@
   // ---------------------------------------------------------------- screens
   const SCREENS = {
     menu: 'scrMenu', play: 'scrPlay', robot: 'scrRobot', setup: 'scrSetup', game: 'scrGame',
-    settings: 'scrSettings', stats: 'scrStats', glossary: 'scrGlossary', challenge: 'scrChallenge'
+    settings: 'scrSettings', stats: 'scrStats', glossary: 'scrGlossary', challenge: 'scrChallenge',
+    lessons: 'scrLessons', lesson: 'scrLesson'
   };
 
   function show(name, push) {
@@ -231,6 +232,8 @@
       case 'stats': renderStats(); break;
       case 'glossary': renderGlossary(); break;
       case 'challenge': renderChallenge(); break;
+      case 'lessons': renderLessons(); break;
+      case 'lesson': renderLesson(); break;
     }
   }
 
@@ -953,6 +956,8 @@
       case 'pzNext': nextPuzzle(); break;
       case 'pzNextLevel': goToLevel(+b.dataset.level); break;
       case 'pzHub': history.back(); break;
+      case 'lsMore': { const l = allLessons().find(x => x.id === state.lessonCtx.id); if (l) lessonTask(l, false); break; }
+      case 'lsBack': history.back(); break;
       case 'anCancel':
         state.token++; Engine.cancel(); state.busy = false; state.strip = null; renderGame();
         break;
@@ -1231,7 +1236,8 @@
     const top = bar(bottomColor ^ BLACK), bottom = bar(bottomColor);
     if (state.mode === 'puzzle' && state.pz) {
       const p = state.pz.p;
-      top.html = `<span class="player-name">🎯 ${esc(t(CAT_NAME[p.c]))} · ${esc(t(LEVEL_KEY[LEVELS[p.l]]))}</span>`;
+      top.html = state.lessonCtx ? `<span class="player-name">📚 ${esc(state.lessonCtx.title[state.lang])}</span>` :
+        `<span class="player-name">🎯 ${esc(t(CAT_NAME[p.c]))} · ${esc(t(LEVEL_KEY[LEVELS[p.l]]))}</span>`;
       top.active = false;
       bottom.html = `<span class="player-name"><span class="swatch ${state.pz.color === WHITE ? 'w' : 'b'}"></span>${esc(t('you'))}</span>` +
         (chSetup.timer ? `<span class="clock pz-timer" id="pzTimer">${fmtElapsed(puzzleElapsed())}</span>` : '');
@@ -1283,7 +1289,7 @@
   $('btnBest').addEventListener('click', () => { if (state.mode === 'analysis') analysisBest(); else requestBest(0); });
   $('btnHint').addEventListener('click', puzzleHint);
   $('btnSkip').addEventListener('click', puzzleSkip);
-  $('btnNext').addEventListener('click', nextPuzzle);
+  $('btnNext').addEventListener('click', () => { if (state.lessonCtx) history.back(); else nextPuzzle(); });
   $('btnEdit').addEventListener('click', () => editPosition(state.game.fen()));
 
   function closeMore() { $('moreMenu').hidden = true; $('btnMore').setAttribute('aria-expanded', 'false'); }
@@ -1432,8 +1438,9 @@
     }).catch(() => toast('loadFailed'));
   }
 
-  function startPuzzle(p) {
+  function startPuzzle(p, lesson) {
     newGameState('puzzle');
+    state.lessonCtx = lesson || null; // set when the puzzle was opened from a lesson
     state.startFen = p.f;
     state.game = new Core.Chess(p.f);
     state.pz = {
@@ -1539,6 +1546,8 @@
     pz.t = performance.now() - pz.t0;
     state.hintSq = -1;
     const wasDone = levelDone(pz.p.c, pz.p.l);
+    if (state.lessonCtx && !pz.failed) markLesson(state.lessonCtx.id, 'p');
+    if (pz.p.c === 'l') pz.recorded = true; // a lesson's own example is not a Challenge result
     if (!pz.recorded) {
       pz.recorded = true;
       recordChallenge(pz.p, pz.failed ? 'failed' : (pz.mistakes || pz.hints) ? 'solved' : 'first');
@@ -1554,6 +1563,7 @@
   function puzzleSkip() {
     const pz = state.pz;
     if (!pz || pz.auto) return;
+    if (state.lessonCtx) { history.back(); return; }
     // Skipping after a wrong try or a hint counts as not solved.
     if (!pz.done && !pz.recorded && (pz.mistakes || pz.hints)) { pz.recorded = true; recordChallenge(pz.p, 'failed'); }
     nextPuzzle();
@@ -1575,7 +1585,11 @@
     body += `<p>${puzzleText(p[L] || p.en)}</p>`;
     if (p.a) body += `<p class="pz-after">${puzzleText(p.a[L] || p.a.en)}</p>`;
     let banner = '', actions = `<button type="button" class="btn small primary" data-strip="pzNext">→ ${esc(t('next'))}</button>`;
-    if (s.levelDone) {
+    if (state.lessonCtx) {
+      const l = allLessons().find(x => x.id === state.lessonCtx.id);
+      actions = (l && l.practice ? `<button type="button" class="btn small primary" data-strip="lsMore">🎯 ${esc(t(pz.p.c === 'l' ? 'practiceMore' : 'practiceAnother'))}</button>` : '') +
+        `<button type="button" class="btn small${l && l.practice ? '' : ' primary'}" data-strip="lsBack">↩ ${esc(t('backToLesson'))}</button>`;
+    } else if (s.levelDone) {
       const next = nextLevelFor(p.c, p.l);
       const where = `${t(CAT_NAME[p.c])} · ${t(LEVEL_KEY[LEVELS[p.l]])}`;
       banner = `<div class="level-done">🎉 <b>${esc(tf('chLevelDoneTitle', { where }))}</b>` +
@@ -1979,6 +1993,141 @@
       { key: 'cancel' }
     ]);
   });
+
+  // ---------------------------------------------------------------- lessons
+  // A short course (data/lessons.js, loaded on demand). Each lesson is a few
+  // steps with a diagram; "Your turn" runs on the real board through the
+  // puzzle code (a lesson's own task, or Challenge puzzles on the same theme).
+  let lessonsPromise = null;
+  function loadLessons() {
+    if (window.LESSONS) return Promise.resolve(window.LESSONS);
+    if (!lessonsPromise) {
+      lessonsPromise = new Promise((resolve, reject) => {
+        const el = document.createElement('script');
+        el.src = 'data/lessons.js';
+        el.onload = () => (window.LESSONS ? resolve(window.LESSONS) : reject(new Error('no data')));
+        el.onerror = () => { lessonsPromise = null; el.remove(); reject(new Error('load failed')); };
+        document.head.appendChild(el);
+      });
+    }
+    return lessonsPromise;
+  }
+  const allLessons = () => (window.LESSONS || []).flatMap((ch, ci) => ch.lessons.map(l => Object.assign({ ci }, l)));
+  const lessonProgress = () => { const p = store.get('lessonProgress', {}); return p && typeof p === 'object' ? p : {}; };
+  function markLesson(id, key) {
+    const p = lessonProgress();
+    p[id] = Object.assign({}, p[id], { [key]: 1 });
+    store.set('lessonProgress', p);
+  }
+  const lessonView = { id: null, step: 0 };
+
+  function renderLessons() {
+    const box = $('lessonList');
+    if (!window.LESSONS) {
+      box.innerHTML = `<p class="hint-text">${esc(t('loading'))}</p>`;
+      loadLessons().then(() => { if (state.screen === 'lessons') renderLessons(); })
+        .catch(() => { box.innerHTML = `<p class="hint-text">${esc(t('loadFailed'))}</p>`; });
+      return;
+    }
+    const L = state.lang, prog = lessonProgress(), all = allLessons();
+    const read = all.filter(l => prog[l.id] && prog[l.id].r).length;
+    let html = `<p class="ch-progress-text">${esc(tf('lessonsRead', { r: read, n: all.length }))}</p>`;
+    window.LESSONS.forEach((ch, ci) => {
+      html += `<h3 class="lesson-ch">${esc(tf('chapterN', { n: ci + 1 }))} · ${esc(ch.ch[L])}</h3><div class="lesson-items">`;
+      for (const l of ch.lessons) {
+        const p = prog[l.id] || {};
+        html += `<button type="button" class="lesson-item${p.r ? ' read' : ''}" data-lesson="${l.id}"><span>${esc(l.t[L])}</span>` +
+          `<span class="lesson-marks">${p.r ? `<span title="${esc(t('lessonRead'))}">✓</span>` : ''}${p.p ? `<span title="${esc(t('lessonPracticed'))}">🎯</span>` : ''}</span></button>`;
+      }
+      html += '</div>';
+    });
+    box.innerHTML = html;
+  }
+  $('lessonList').addEventListener('click', e => {
+    const b = e.target.closest('[data-lesson]');
+    if (b) openLesson(b.dataset.lesson, 0);
+  });
+
+  function openLesson(id, step) {
+    lessonView.id = id;
+    lessonView.step = step || 0;
+    if (state.screen === 'lesson') { history.replaceState({ s: 'lesson' }, ''); renderLesson(); window.scrollTo(0, 0); }
+    else show('lesson');
+  }
+
+  // The diagram for a step: a glossary demo, a position, or a moment in a game.
+  function stepDemo(l, s) {
+    if (s.term) return (TERMS[s.term] && TERMS[s.term].demo) || null;
+    if (s.ply !== undefined) {
+      const g = new Core.Chess(START_FEN);
+      let last = null;
+      for (const x of l.game.split(' ').slice(0, s.ply)) { last = g.moveFromSan(x); g.make(last); }
+      return { fen: g.fen(), arrows: last ? [[sqName(mFrom(last)), sqName(mTo(last))]] : [] };
+    }
+    if (s.fen) return { fen: s.fen, arrows: s.arrows, marks: s.marks };
+    return { moves: s.moves, arrows: s.arrows, marks: s.marks };
+  }
+
+  function renderLesson() {
+    if (!window.LESSONS) { loadLessons().then(() => { if (state.screen === 'lesson') renderLesson(); }); return; }
+    const all = allLessons(), idx = all.findIndex(l => l.id === lessonView.id);
+    if (idx < 0) { show('lessons', false); return; }
+    const l = all[idx], L = state.lang, n = l.steps.length, i = Math.min(lessonView.step, n - 1), s = l.steps[i];
+    const last = i === n - 1;
+    if (last) markLesson(l.id, 'r');
+    $('lessonTitle').textContent = l.t[L];
+    const demo = stepDemo(l, s);
+    let text;
+    if (s.term && TERMS[s.term]) {
+      const tm = TERMS[s.term][L];
+      text = `<h3 class="lesson-term">${esc(cap(tm.n))}</h3><p>${esc(tm.d)}</p><p><b>${esc(t('why'))}</b> ${esc(tm.w)}</p><p><b>${esc(t('example'))}</b> ${esc(tm.x)}</p>`;
+    } else text = `<p>${esc(s[L])}</p>`;
+    const next = all[idx + 1];
+    const doIt = l.task || l.practice;
+    $('lessonBody').innerHTML = `<div class="lesson-step">${esc(tf('stepOf', { a: i + 1, n }))}</div>
+      ${demo ? `<div class="lesson-board">${miniBoardHTML(demo)}</div>` : ''}
+      <div class="lesson-text">${text}</div>
+      <div class="lesson-nav">
+        <button type="button" class="btn" data-lnav="prev" ${i === 0 ? 'disabled' : ''} aria-label="${esc(t('prevStep'))}">◀</button>
+        <button type="button" class="btn${last ? '' : ' primary'}" data-lnav="next" ${last ? 'disabled' : ''} aria-label="${esc(t('nextStep'))}">▶</button>
+      </div>
+      ${last ? `<div class="lesson-end">
+        ${doIt ? `<button type="button" class="btn primary big" data-lnav="task">🎯 ${esc(t('yourTurn'))}</button>` : ''}
+        ${next ? `<button type="button" class="btn big" data-lnav="nextLesson">${esc(t('nextLesson'))}: ${esc(next.t[L])} →</button>` : ''}
+      </div>` : ''}`;
+  }
+  $('lessonBody').addEventListener('click', e => {
+    const b = e.target.closest('[data-lnav]');
+    if (!b || b.disabled) return;
+    const all = allLessons(), idx = all.findIndex(l => l.id === lessonView.id), l = all[idx];
+    switch (b.dataset.lnav) {
+      case 'prev': lessonView.step--; renderLesson(); break;
+      case 'next': lessonView.step++; renderLesson(); break;
+      case 'nextLesson': openLesson(all[idx + 1].id, 0); break;
+      case 'task': lessonTask(l, true); break;
+    }
+  });
+
+  // "Your turn": the lesson's own position first, then Challenge puzzles on the same theme.
+  function lessonTask(l, first) {
+    const ctx = { id: l.id, title: l.t };
+    if (l.task && first) {
+      const tk = l.task;
+      startPuzzle({ i: 'lesson-' + l.id, f: tk.f, s: tk.s, g: tk.g, t: '', l: 0, c: 'l', en: tk.en, es: tk.es }, ctx);
+      return;
+    }
+    if (!l.practice) { history.back(); return; }
+    loadPuzzles().then(all => {
+      const pr = l.practice;
+      const pool = all.filter(p => p.c === pr.c && (!pr.t || p.t === pr.t) && (pr.l === undefined || p.l === pr.l));
+      if (!pool.length) { history.back(); return; }
+      const solved = chStats().solved, low = Math.min(...pool.map(p => p.l));
+      const fresh = pool.filter(p => !solved[p.i] && !seenThisSession.has(p.i));
+      const easy = fresh.filter(p => p.l === low);
+      const from = easy.length ? easy : fresh.length ? fresh : pool;
+      startPuzzle(from[Math.floor(Math.random() * from.length)], ctx);
+    }).catch(() => toast('loadFailed'));
+  }
 
   // ---------------------------------------------------------------- menu & setup
   function renderMenu() {
