@@ -659,3 +659,5 @@ button { font: inherit; color: inherit; }
 .lesson-nav { display: flex; gap: 10px; }
 .lesson-nav .btn { flex: 1; min-height: 50px; font-size: 1.2rem; }
 .lesson-end .btn.big { margin-top: 12px; }
+.menu-btn.daily { border: 2px solid #e9b72e; }
+.menu-btn.daily.done { border-color: var(--border); }

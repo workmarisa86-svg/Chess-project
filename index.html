@@ -61,6 +61,9 @@
           <span class="mi" aria-hidden="true">▶</span>
           <span class="mt"><span data-i18n="resumeGame">Resume game</span><small id="resumeInfo"></small></span>
         </button>
+        <button type="button" class="menu-btn daily" id="btnDaily">
+          <span class="mi" aria-hidden="true">🗓</span><span class="mt"><span data-i18n="daily">Daily puzzle</span><small id="dailyInfo"></small></span>
+        </button>
         <button type="button" class="menu-btn primary" data-go="play">
           <span class="mi" aria-hidden="true">♟</span><span class="mt" data-i18n="play">Play</span>
         </button>
@@ -266,6 +269,10 @@
         <button type="button" class="btn danger" id="btnResetStats" data-i18n="resetStats">Reset statistics</button>
       </div>
       <div class="stats-section ch-stats">
+        <h3>📈 <span data-i18n="ratings">Ratings</span></h3>
+        <div id="ratingBody"></div>
+      </div>
+      <div class="stats-section ch-stats">
         <h3>🎯 <span data-i18n="challenge">Challenge</span></h3>
         <div id="chStatsBody"></div>
       </div>
@@ -325,6 +332,14 @@
       <button type="button" class="btn primary big" id="btnChStart" data-i18n="chStart">Start</button>
       <button type="button" class="btn big next-level" id="btnChNextLevel" hidden></button>
       <p class="hint-text" id="chLoading" hidden data-i18n="loading">Loading…</p>
+      <button type="button" class="choice analysis-link" id="btnReview" hidden>
+        <span class="ci" aria-hidden="true">↻</span>
+        <span class="ct"><b></b><small data-i18n="reviewDesc"></small></span>
+      </button>
+      <button type="button" class="choice analysis-link" id="btnGuess">
+        <span class="ci" aria-hidden="true">🏛️</span>
+        <span class="ct"><b data-i18n="guessTitle">Guess the master's move</b><small data-i18n="guessDesc"></small></span>
+      </button>
       <button type="button" class="choice analysis-link" id="btnAnalysis">
         <span class="ci" aria-hidden="true">🔍</span>
         <span class="ct"><b data-i18n="analysisBoard">Analysis board</b><small data-i18n="analysisDesc"></small></span>

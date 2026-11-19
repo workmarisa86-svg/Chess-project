@@ -306,7 +306,7 @@
       const el = document.createElement('button');
       el.type = 'button';
       el.className = 'btn ' + (b.cls || '');
-      el.textContent = t(b.key);
+      el.textContent = b.label || t(b.key);
       el.addEventListener('click', () => { closeModal('askModal'); if (b.fn) b.fn(); });
       box.appendChild(el);
     }
@@ -773,6 +773,7 @@
     state.strip = null;
     if (state.mode === 'analysis') { if (wasBusy) Engine.cancel(); undoPlies(1); renderGame(); return; }
     if (!isRobotGame()) { undoPlies(1); saveGame(); renderGame(); return; }
+    state.usedUndo = true; // the game no longer counts for the rating
     // Go back to the position before the human's most recent move.
     const turnAt = k => (k % 2 === 0 ? WHITE : BLACK);
     let n = 0, k = state.moves.length;
@@ -791,7 +792,7 @@
     state.mode = mode;
     state.startFen = START_FEN;
     state.game = new Core.Chess(START_FEN);
-    state.pz = null; state.an = null; state.hintSq = -1;
+    state.pz = null; state.an = null; state.hintSq = -1; state.usedUndo = false;
     state.moves = []; state.sans = [];
     state.selected = -1; state.targets = [];
     state.lastMove = null; state.over = null; state.busy = false; state.hint = null;
@@ -852,7 +853,7 @@
     if (!gameInProgress()) { discardSaved(); return; }
     const k = state.clock;
     store.set('game', {
-      mode: state.mode, level: state.level, humanColor: state.humanColor, moves: state.moves.slice(),
+      mode: state.mode, level: state.level, humanColor: state.humanColor, moves: state.moves.slice(), usedUndo: !!state.usedUndo,
       flipped: state.flipped,
       clock: k ? { w: timeLeft(WHITE), b: timeLeft(BLACK), inc: k.inc, base: k.base, incS: k.incS } : null
     });
@@ -871,6 +872,7 @@
     state.level = LEVELS.includes(s.level) ? s.level : 'medium';
     state.humanColor = s.humanColor === BLACK ? BLACK : WHITE;
     state.flipped = !!s.flipped;
+    state.usedUndo = !!s.usedUndo;
     try {
       for (const m of s.moves) {
         if (!state.game.moves().includes(m)) throw new Error('bad move');
@@ -958,6 +960,10 @@
       case 'pzHub': history.back(); break;
       case 'lsMore': { const l = allLessons().find(x => x.id === state.lessonCtx.id); if (l) lessonTask(l, false); break; }
       case 'lsBack': history.back(); break;
+      case 'toMenu': goMenu(); break;
+      case 'reviewNext': startReview(); break;
+      case 'guessAgain': chooseGuessGame(); break;
+      case 'pzGuessOk': break;
       case 'anCancel':
         state.token++; Engine.cancel(); state.busy = false; state.strip = null; renderGame();
         break;
@@ -1018,6 +1024,12 @@
             <button type="button" class="btn small" data-strip="pzHint">💡 ${esc(t('hint'))}</button>
             <button type="button" class="btn small" data-strip="pzAnswer">👁 ${esc(t('showAnswer'))}</button>
           </div>`;
+        break;
+      case 'guessHit':
+        html = `<div class="strip-line"><span class="rate-pill r-great">✓ ${esc(t('guessHit'))}</span> <span class="strip-move">${esc(san(s.san))}</span></div>`;
+        break;
+      case 'guessMiss':
+        html = `<div class="strip-line"><span class="rate-pill r-good">🏛️ ${esc(tf('guessMiss', { move: san(s.san) }))}</span></div>`;
         break;
       case 'pzSolved':
       case 'pzAnswer':
@@ -1236,7 +1248,9 @@
     const top = bar(bottomColor ^ BLACK), bottom = bar(bottomColor);
     if (state.mode === 'puzzle' && state.pz) {
       const p = state.pz.p;
-      top.html = state.lessonCtx ? `<span class="player-name">📚 ${esc(state.lessonCtx.title[state.lang])}</span>` :
+      top.html = p.g === 'guess' ? `<span class="player-name">🏛️ ${esc(p.n[state.lang])}</span>` :
+        state.pzCtx && state.pzCtx.kind === 'daily' ? `<span class="player-name">🗓 ${esc(t('daily'))}</span>` :
+        state.lessonCtx ? `<span class="player-name">📚 ${esc(state.lessonCtx.title[state.lang])}</span>` :
         `<span class="player-name">🎯 ${esc(t(CAT_NAME[p.c]))} · ${esc(t(LEVEL_KEY[LEVELS[p.l]]))}</span>`;
       top.active = false;
       bottom.html = `<span class="player-name"><span class="swatch ${state.pz.color === WHITE ? 'w' : 'b'}"></span>${esc(t('you'))}</span>` +
@@ -1289,7 +1303,12 @@
   $('btnBest').addEventListener('click', () => { if (state.mode === 'analysis') analysisBest(); else requestBest(0); });
   $('btnHint').addEventListener('click', puzzleHint);
   $('btnSkip').addEventListener('click', puzzleSkip);
-  $('btnNext').addEventListener('click', () => { if (state.lessonCtx) history.back(); else nextPuzzle(); });
+  $('btnNext').addEventListener('click', () => {
+    if (state.pzCtx && state.pzCtx.kind === 'daily') goMenu();
+    else if (state.pzCtx && state.pzCtx.kind === 'review') startReview();
+    else if (state.lessonCtx || state.pzCtx) history.back();
+    else nextPuzzle();
+  });
   $('btnEdit').addEventListener('click', () => editPosition(state.game.fen()));
 
   function closeMore() { $('moreMenu').hidden = true; $('btnMore').setAttribute('aria-expanded', 'false'); }
@@ -1382,7 +1401,11 @@
     bump(s.cat, p.c); bump(s.lvl, p.l);
     if (result === 'first') { s.first++; s.cur++; s.best = Math.max(s.best, s.cur); } else s.cur = 0;
     if (result !== 'failed') s.solved[p.i] = 1;
+    // missed puzzles come back in "Review missed" until they are solved
+    s.missed = s.missed && typeof s.missed === 'object' ? s.missed : {};
+    if (result === 'failed') s.missed[p.i] = 1; else delete s.missed[p.i];
     store.set('challengeStats', s);
+    rateResult('puzzle', puzzleRating(p), 100, result === 'first' ? 1 : 0);
   }
 
   // Random order, no repeats: unsolved puzzles first (not shown again in this
@@ -1438,9 +1461,10 @@
     }).catch(() => toast('loadFailed'));
   }
 
-  function startPuzzle(p, lesson) {
+  function startPuzzle(p, lesson, extra) {
     newGameState('puzzle');
     state.lessonCtx = lesson || null; // set when the puzzle was opened from a lesson
+    state.pzCtx = extra || null;      // { kind: 'daily' | 'review' | 'guess' }
     state.startFen = p.f;
     state.game = new Core.Chess(p.f);
     state.pz = {
@@ -1466,6 +1490,7 @@
 
   function goalText(pz) {
     const g = pz.p.g;
+    if (g === 'guess') return `${t('guessTitle')} · ${tf('guessProgress', { a: pz.guessHit || 0, n: pz.guessN || 0 })}`;
     const goal = g.charAt(0) === 'm' && g !== 'mat' ? tf('goalMate', { n: g.slice(1) }) :
       t({ mat: 'goalMaterial', win: 'goalWin', draw: 'goalDraw', best: 'goalBest' }[g] || 'goalBest');
     return `${t(pz.color === WHITE ? 'whiteToMove' : 'blackToMove')} · ${goal}`;
@@ -1473,6 +1498,7 @@
 
   function puzzleMove(m) {
     const pz = state.pz, g = state.game;
+    if (pz.p.g === 'guess') { guessMove(m); return; }
     let ok = uciOf(m) === pz.line[pz.step];
     if (!ok) { g.make(m); ok = g.status().reason === 'checkmate'; g.undo(); } // any checkmate solves it
     state.strip = null;
@@ -1487,7 +1513,11 @@
     }
     pz.step++;
     if (state.over || pz.step >= pz.line.length) { puzzleSolved(); return; }
-    // The robot answers with the defence from the solution.
+    robotReply();
+  }
+  // The robot answers with the next move of the solution (or of the game).
+  function robotReply() {
+    const pz = state.pz;
     pz.auto = true;
     renderGame();
     const token = state.token;
@@ -1497,8 +1527,9 @@
       pz.step++;
       pz.auto = false;
       if (r) applyMove(r);
+      if (state.over || pz.step >= pz.line.length) { puzzleSolved(); return; }
       renderGame();
-    }, 450);
+    }, pz.p.g === 'guess' ? 700 : 450);
   }
 
   function puzzleHint() {
@@ -1547,7 +1578,8 @@
     state.hintSq = -1;
     const wasDone = levelDone(pz.p.c, pz.p.l);
     if (state.lessonCtx && !pz.failed) markLesson(state.lessonCtx.id, 'p');
-    if (pz.p.c === 'l') pz.recorded = true; // a lesson's own example is not a Challenge result
+    if (pz.p.c === 'l' || pz.p.g === 'guess') pz.recorded = true; // lesson examples and guess games are not Challenge results
+    if (state.pzCtx && state.pzCtx.kind === 'daily') finishDaily(!pz.failed);
     if (!pz.recorded) {
       pz.recorded = true;
       recordChallenge(pz.p, pz.failed ? 'failed' : (pz.mistakes || pz.hints) ? 'solved' : 'first');
@@ -1563,7 +1595,7 @@
   function puzzleSkip() {
     const pz = state.pz;
     if (!pz || pz.auto) return;
-    if (state.lessonCtx) { history.back(); return; }
+    if (state.lessonCtx || state.pzCtx) { if (state.pzCtx && state.pzCtx.kind === 'daily') goMenu(); else history.back(); return; }
     // Skipping after a wrong try or a hint counts as not solved.
     if (!pz.done && !pz.recorded && (pz.mistakes || pz.hints)) { pz.recorded = true; recordChallenge(pz.p, 'failed'); }
     nextPuzzle();
@@ -1585,7 +1617,21 @@
     body += `<p>${puzzleText(p[L] || p.en)}</p>`;
     if (p.a) body += `<p class="pz-after">${puzzleText(p.a[L] || p.a.en)}</p>`;
     let banner = '', actions = `<button type="button" class="btn small primary" data-strip="pzNext">→ ${esc(t('next'))}</button>`;
-    if (state.lessonCtx) {
+    if (p.g === 'guess') {
+      const sc = tf('guessScore', { a: pz.guessHit || 0, n: pz.guessN || 0 });
+      return `<div class="strip-line"><span class="rate-pill r-great">🏛️ ${esc(sc)}</span></div>
+        <div class="cpara" data-key="${key}"><p class="pz-game"><b>${esc(p.n[L])}</b></p>${p.a ? `<p>${esc(p.a[L])}</p>` : ''}<div class="term-slot"></div></div>
+        <div class="strip-actions"><button type="button" class="btn small primary" data-strip="guessAgain">🏛️ ${esc(t('anotherGame'))}</button>
+        <button type="button" class="btn small" data-strip="lsBack">↩ ${esc(t('back'))}</button></div>`;
+    }
+    if (state.pzCtx && state.pzCtx.kind === 'daily') {
+      const d = dailyState();
+      banner = `<div class="level-done">🗓 <b>${esc(t('daily'))}</b> · ${esc(tf('dailyStreak', { n: d.last === dayKey() ? d.streak : 0 }))}</div>`;
+      actions = `<button type="button" class="btn small primary" data-strip="toMenu">${esc(t('backToMenu'))}</button>`;
+    } else if (state.pzCtx && state.pzCtx.kind === 'review') {
+      actions = (missedIds().length ? `<button type="button" class="btn small primary" data-strip="reviewNext">↻ ${esc(t('nextMissed'))}</button>` : '') +
+        `<button type="button" class="btn small" data-strip="lsBack">↩ ${esc(t('back'))}</button>`;
+    } else if (state.lessonCtx) {
       const l = allLessons().find(x => x.id === state.lessonCtx.id);
       actions = (l && l.practice ? `<button type="button" class="btn small primary" data-strip="lsMore">🎯 ${esc(t(pz.p.c === 'l' ? 'practiceMore' : 'practiceAnother'))}</button>` : '') +
         `<button type="button" class="btn small${l && l.practice ? '' : ' primary'}" data-strip="lsBack">↩ ${esc(t('backToLesson'))}</button>`;
@@ -1641,6 +1687,9 @@
       tf('chProgress', { s: done, n: pool.length }) + (complete ? ' — ' + t('chLevelDone') : '');
     $('chProgressBar').style.width = pool.length ? (done / pool.length * 100) + '%' : '0';
     $('btnChStart').disabled = !pool.length;
+    const missed = missedIds().length;
+    $('btnReview').hidden = !missed;
+    $('btnReview').querySelector('b').textContent = tf('reviewMissed', { n: missed });
     $('btnChStart').textContent = t(complete ? 'chPlayAgain' : 'chStart');
     $('btnChNextLevel').hidden = !complete || next < 0;
     if (next >= 0) $('btnChNextLevel').textContent = tf('chNextLevel', { level: t(LEVEL_KEY[LEVELS[next]]) }) + ' →';
@@ -1970,7 +2019,13 @@
   }
 
   // ---------------------------------------------------------------- challenge statistics
+  function renderRatings() {
+    const r = ratings(), d = dailyState();
+    $('ratingBody').innerHTML = `<div class="stats-summary">` + tile('gameRating', ratingText(r.game)) + tile('puzzleRating', ratingText(r.puzzle)) +
+      tile('dailyBest', d.best || 0) + '</div>' + `<p class="hint-text">${esc(t('ratingNote'))}</p>`;
+  }
   function renderChStats() {
+    renderRatings();
     const s = chStats();
     const solvedN = Object.keys(s.solved).length;
     $('btnResetCh').disabled = !s.played && !solvedN;
@@ -2129,8 +2184,132 @@
     }).catch(() => toast('loadFailed'));
   }
 
+  // ---------------------------------------------------------------- ratings (Glicko-2)
+  // Estimated, not official: a game rating from fair games against the robot
+  // (Alone mode, no Undo) and a puzzle rating from the first try at each puzzle.
+  const ROBOT_RATING = { beginner: 400, easy: 800, medium: 1200, hard: 1600, impossible: 2000 };
+  const puzzleRating = p => 800 + 300 * p.l + 50 * (Math.ceil(p.s.split(' ').length / 2) - 1);
+  const ratings = () => Object.assign({ game: null, puzzle: null }, store.get('ratings', {}));
+  function glicko(p, oppR, oppRD, score) {
+    const Q = 173.7178, TAU = 0.5;
+    p = p || { r: 1500, rd: 350, vol: 0.06, n: 0, last: Date.now() };
+    const days = Math.max(0, (Date.now() - (p.last || Date.now())) / 864e5);
+    const rd0 = Math.min(350, Math.sqrt(p.rd * p.rd + Math.pow(p.vol * Q, 2) * days)); // less sure after a break
+    const mu = (p.r - 1500) / Q, phi = rd0 / Q, muJ = (oppR - 1500) / Q, phiJ = oppRD / Q;
+    const g = 1 / Math.sqrt(1 + 3 * phiJ * phiJ / (Math.PI * Math.PI));
+    const E = 1 / (1 + Math.exp(-g * (mu - muJ)));
+    const v = 1 / (g * g * E * (1 - E)), delta = v * g * (score - E);
+    const a = Math.log(p.vol * p.vol);
+    const f = x => { const ex = Math.exp(x), d = phi * phi + v + ex; return ex * (delta * delta - d) / (2 * d * d) - (x - a) / (TAU * TAU); };
+    let A = a, B;
+    if (delta * delta > phi * phi + v) B = Math.log(delta * delta - phi * phi - v);
+    else { let k = 1; while (f(a - k * TAU) < 0 && k < 50) k++; B = a - k * TAU; }
+    let fA = f(A), fB = f(B);
+    for (let i = 0; i < 60 && Math.abs(B - A) > 1e-6; i++) {
+      const C = A + (A - B) * fA / (fB - fA), fC = f(C);
+      if (fC * fB <= 0) { A = B; fA = fB; } else fA /= 2;
+      B = C; fB = fC;
+    }
+    const vol = Math.exp(A / 2), phiStar = Math.sqrt(phi * phi + vol * vol);
+    const phiNew = 1 / Math.sqrt(1 / (phiStar * phiStar) + 1 / v);
+    const muNew = mu + phiNew * phiNew * g * (score - E);
+    return { r: muNew * Q + 1500, rd: Math.max(45, phiNew * Q), vol, n: (p.n || 0) + 1, last: Date.now() };
+  }
+  function rateResult(kind, oppR, oppRD, score) {
+    const all = ratings();
+    all[kind] = glicko(all[kind], oppR, oppRD, score);
+    store.set('ratings', all);
+  }
+  // "1450" once it has settled, "1450?" while it is still provisional.
+  const ratingText = p => !p ? '—' : Math.round(p.r) + (p.rd > 110 ? '?' : '');
+
+  // ---------------------------------------------------------------- daily puzzle
+  const dayKey = d => { const x = d || new Date(); return `${x.getFullYear()}-${x.getMonth() + 1}-${x.getDate()}`; };
+  const yesterdayKey = () => { const d = new Date(); d.setDate(d.getDate() - 1); return dayKey(d); };
+  const dailyState = () => Object.assign({ day: '', done: false, streak: 0, best: 0, last: '' }, store.get('daily', {}));
+  function dailyPuzzle(all) {
+    const pr = ratings().puzzle;
+    const lvl = Math.max(0, Math.min(4, Math.round(((pr ? pr.r : 1100) - 800) / 300)));
+    const pool = all.filter(p => p.l === lvl && p.c !== 'l');
+    let h = 2166136261;
+    for (const ch of dayKey()) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+    return pool[h % pool.length];
+  }
+  function startDaily() {
+    loadPuzzles().then(all => { const p = dailyPuzzle(all); if (p) startPuzzle(p, null, { kind: 'daily' }); }).catch(() => toast('loadFailed'));
+  }
+  function finishDaily(solved) {
+    const d = dailyState(), today = dayKey();
+    if (d.day === today && d.done) return;
+    d.day = today; d.done = true;
+    if (solved) {
+      d.streak = d.last === yesterdayKey() ? d.streak + 1 : d.last === today ? d.streak : 1;
+      d.last = today;
+      d.best = Math.max(d.best, d.streak);
+    }
+    store.set('daily', d);
+  }
+  function renderDailyButton() {
+    const d = dailyState(), today = dayKey();
+    const alive = d.last === today || d.last === yesterdayKey();
+    const streak = alive ? d.streak : 0;
+    const doneToday = d.day === today && d.done;
+    const r = ratings();
+    $('dailyInfo').textContent = (doneToday ? t('dailyDone') : streak ? tf('dailyStreak', { n: streak }) : t('dailyNew')) +
+      (r.game || r.puzzle ? ' · ' + tf('ratingMenu', { g: ratingText(r.game), p: ratingText(r.puzzle) }) : '');
+    $('btnDaily').classList.toggle('done', doneToday);
+  }
+  $('btnDaily').addEventListener('click', startDaily);
+
+  // ---------------------------------------------------------------- missed puzzles
+  const missedIds = () => Object.keys(chStats().missed || {});
+  function startReview() {
+    loadPuzzles().then(all => {
+      const ids = missedIds(), pool = all.filter(p => ids.includes(p.i) && (!state.pz || p.i !== state.pz.p.i));
+      const list = pool.length ? pool : all.filter(p => ids.includes(p.i));
+      if (!list.length) { history.back(); return; }
+      startPuzzle(list[Math.floor(Math.random() * list.length)], null, { kind: 'review' });
+    }).catch(() => toast('loadFailed'));
+  }
+  $('btnReview').addEventListener('click', startReview);
+
+  // ---------------------------------------------------------------- guess the master's move
+  function chooseGuessGame() {
+    loadLessons().then(() => {
+      const games = window.GUESS_GAMES || [];
+      ask('chooseGame', '', games.map(gm => ({ label: gm.n[state.lang], fn: () => startGuess(gm) })).concat([{ key: 'cancel' }]));
+    }).catch(() => toast('loadFailed'));
+  }
+  function startGuess(gm) {
+    const g = new Core.Chess(START_FEN), sans = gm.moves.split(' ');
+    for (const s of sans.slice(0, gm.from)) g.make(g.moveFromSan(s));
+    const fen = g.fen(), line = [];
+    for (const s of sans.slice(gm.from)) { const m = g.moveFromSan(s); line.push(uciOf(m)); g.make(m); }
+    startPuzzle({ i: 'guess-' + gm.id, f: fen, s: line.join(' '), g: 'guess', t: '', l: 0, c: 'x', en: '', es: '', n: gm.n, a: gm.a },
+      null, { kind: 'guess', game: gm });
+  }
+  $('btnGuess').addEventListener('click', chooseGuessGame);
+
+  // One guessed move: right or wrong, the game goes on with the master's real move.
+  function guessMove(m) {
+    const pz = state.pz;
+    const real = fromUci(state.game, pz.line[pz.step]);
+    const hit = uciOf(m) === pz.line[pz.step];
+    pz.guessN = (pz.guessN || 0) + 1;
+    if (hit) pz.guessHit = (pz.guessHit || 0) + 1;
+    const sanReal = state.game.san(real, state.game.moves());
+    state.hintSq = -1;
+    applyMove(real);
+    if (!hit) { state.hint = state.lastMove ? { from: sqName(state.lastMove.from), to: sqName(state.lastMove.to) } : null; Sound.play('error'); }
+    state.strip = { kind: hit ? 'guessHit' : 'guessMiss', san: sanReal };
+    pz.step++;
+    if (state.over || pz.step >= pz.line.length) { puzzleSolved(); return; }
+    robotReply();
+  }
+
   // ---------------------------------------------------------------- menu & setup
   function renderMenu() {
+    renderDailyButton();
     const live = state.mode && gameInProgress();
     const s = live ? null : savedGame();
     const resumable = live || !!s;
@@ -2146,7 +2325,7 @@
     $('setupTitle').textContent = t(state.setupMode === 'learn' ? 'modeCoach' : 'modeAlone');
     document.querySelectorAll('#levelOptions button').forEach(b => b.classList.toggle('selected', b.dataset.level === robotSetup.level));
     document.querySelectorAll('#colorOptions button').forEach(b => b.classList.toggle('selected', b.dataset.color === robotSetup.color));
-    $('levelDesc').textContent = t(LEVEL_KEY[robotSetup.level] + 'Desc');
+    $('levelDesc').textContent = t(LEVEL_KEY[robotSetup.level] + 'Desc') + ` (${tf('robotRating', { r: ROBOT_RATING[robotSetup.level] })})`;
     const cfg = clockConfig(state.setupMode);
     $('setupClockNote').textContent = state.setupMode === 'learn' ? t('clockNoteCoach') :
       cfg ? tf('clockNoteOn', { tc: `${cfg.base}+${cfg.inc}` }) : t('clockNoteOff');
@@ -2292,6 +2471,10 @@
       rec.result = winner === null ? 'draw' : winner === state.humanColor ? 'win' : 'loss';
     } else {
       rec.result = winner === null ? 'draw' : winner === WHITE ? 'white' : 'black';
+    }
+    if (state.mode === 'cpu' && !state.usedUndo) {
+      rec.rated = true;
+      rateResult('game', ROBOT_RATING[state.level] || 1200, 80, rec.result === 'win' ? 1 : rec.result === 'draw' ? 0.5 : 0);
     }
     const list = loadStats();
     list.push(rec);
