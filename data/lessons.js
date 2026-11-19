@@ -222,3 +222,22 @@ self.LESSONS = [
     ]
   }
 ];
+
+// "Guess the master's move": famous games, guessed from move `from` (a ply where the winner is to move).
+self.GUESS_GAMES = [
+  { id: 'opera', n: { en: 'Morphy vs. Duke of Brunswick & Count Isouard, Paris 1858', es: 'Morphy contra el duque de Brunswick y el conde Isouard, París 1858' }, from: 6,
+    moves: 'e4 e5 Nf3 d6 d4 Bg4 dxe5 Bxf3 Qxf3 dxe5 Bc4 Nf6 Qb3 Qe7 Nc3 c6 Bg5 b5 Nxb5 cxb5 Bxb5+ Nbd7 O-O-O Rd8 Rxd7 Rxd7 Rd1 Qe6 Bxd7+ Nxd7 Qb8+ Nxb8 Rd8#',
+    a: { en: 'Morphy won with checkmate on move 17.', es: 'Morphy ganó con jaque mate en la jugada 17.' } },
+  { id: 'reti', n: { en: 'Réti vs. Tartakower, Vienna 1910', es: 'Réti contra Tartakower, Viena 1910' }, from: 8,
+    moves: 'e4 c6 d4 d5 Nc3 dxe4 Nxe4 Nf6 Qd3 e5 dxe5 Qa5+ Bd2 Qxe5 O-O-O Nxe4 Qd8+ Kxd8 Bg5+ Kc7 Bd8#',
+    a: { en: 'A queen sacrifice and a double check: mate on move 11.', es: 'Un sacrificio de dama y un jaque doble: mate en la jugada 11.' } },
+  { id: 'immortal', n: { en: 'Anderssen vs. Kieseritzky, London 1851 (the Immortal Game)', es: 'Anderssen contra Kieseritzky, Londres 1851 (la Partida Inmortal)' }, from: 10,
+    moves: 'e4 e5 f4 exf4 Bc4 Qh4+ Kf1 b5 Bxb5 Nf6 Nf3 Qh6 d3 Nh5 Nh4 Qg5 Nf5 c6 g4 Nf6 Rg1 cxb5 h4 Qg6 h5 Qg5 Qf3 Ng8 Bxf4 Qf6 Nc3 Bc5 Nd5 Qxb2 Bd6 Bxg1 e5 Qxa1+ Ke2 Na6 Nxg7+ Kd8 Qf6+ Nxf6 Be7#',
+    a: { en: 'Anderssen gave up both rooks, a bishop and his queen, and still mated.', es: 'Anderssen entregó las dos torres, un alfil y la dama, y aun así dio mate.' } },
+  { id: 'evergreen', n: { en: 'Anderssen vs. Dufresne, Berlin 1852 (the Evergreen Game)', es: 'Anderssen contra Dufresne, Berlín 1852 (la Partida Siempreviva)' }, from: 12,
+    moves: 'e4 e5 Nf3 Nc6 Bc4 Bc5 b4 Bxb4 c3 Ba5 d4 exd4 O-O d3 Qb3 Qf6 e5 Qg6 Re1 Nge7 Ba3 b5 Qxb5 Rb8 Qa4 Bb6 Nbd2 Bb7 Ne4 Qf5 Bxd3 Qh5 Nf6+ gxf6 exf6 Rg8 Rad1 Qxf3 Rxe7+ Nxe7 Qxd7+ Kxd7 Bf5+ Ke8 Bd7+ Kf8 Bxe7#',
+    a: { en: 'It ended with a famous double check and mate.', es: 'Terminó con un célebre jaque doble y mate.' } },
+  { id: 'lasker', n: { en: 'Edward Lasker vs. Thomas, London 1912', es: 'Edward Lasker contra Thomas, Londres 1912' }, from: 10,
+    moves: 'd4 e6 Nf3 f5 Nc3 Nf6 Bg5 Be7 Bxf6 Bxf6 e4 fxe4 Nxe4 b6 Ne5 O-O Bd3 Bb7 Qh5 Qe7 Qxh7+ Kxh7 Nxf6+ Kh6 Neg4+ Kg5 h4+ Kf4 g3+ Kf3 Be2+ Kg2 Rh2+ Kg1 Kd2#',
+    a: { en: 'The black king was chased across the whole board and mated on g1.', es: 'El rey negro fue perseguido por todo el tablero y recibió mate en g1.' } }
+];

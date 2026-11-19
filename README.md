@@ -42,6 +42,14 @@ Just open `index.html`.
   and random order without repeats until everything is solved. Every category has puzzles at every
   level: when you solve the last puzzle of a level, it says *Level complete* and offers *Next level*
   (the Challenge screen also ticks finished levels ✓ and shows a *Next level* button).
+- **Daily puzzle** (main menu): one puzzle a day matched to your puzzle rating, with a 🔥 streak of
+  days solved in a row.
+- **Ratings**: an estimated game rating (from fair games against the robot in Alone mode; the robot
+  levels are rated about 400/800/1200/1600/2000) and a puzzle rating (first try at each puzzle), both
+  with Glicko-2, the system Lichess uses. Shown on the menu, in Robot setup and in Statistics.
+- **Review missed puzzles** (Challenge): puzzles you got wrong come back until you solve them.
+- **Guess the master's move** (Challenge): play through five famous games as the winner and see how
+  many of the master's moves you find.
 - **Lessons**: a short course in nine chapters (first steps, simple mates, pawn endings, winning won
   games, opening principles, middlegame plans, tactics, rook endings and great games explained),
   22 lessons in English and Spanish. Each lesson is a few steps with a diagram (◀ ▶), then *Your turn*
