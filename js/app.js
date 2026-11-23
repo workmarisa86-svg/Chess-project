@@ -209,7 +209,7 @@
   const SCREENS = {
     menu: 'scrMenu', play: 'scrPlay', robot: 'scrRobot', setup: 'scrSetup', game: 'scrGame',
     settings: 'scrSettings', stats: 'scrStats', glossary: 'scrGlossary', challenge: 'scrChallenge',
-    lessons: 'scrLessons', lesson: 'scrLesson'
+    lessons: 'scrLessons', lesson: 'scrLesson', reader: 'scrReader'
   };
 
   function show(name, push) {
@@ -234,6 +234,7 @@
       case 'challenge': renderChallenge(); break;
       case 'lessons': renderLessons(); break;
       case 'lesson': renderLesson(); break;
+      case 'reader': renderReader(); break;
     }
   }
 
@@ -2067,7 +2068,8 @@
     }
     return lessonsPromise;
   }
-  const allLessons = () => (window.LESSONS || []).flatMap((ch, ci) => ch.lessons.map(l => Object.assign({ ci }, l)));
+  const books = () => window.BOOKS || [{ id: 'course', chapters: window.LESSONS || [] }];
+  const allLessons = () => books().filter(b => b.kind !== 'reader').flatMap(b => b.chapters.flatMap(ch => ch.lessons));
   const lessonProgress = () => { const p = store.get('lessonProgress', {}); return p && typeof p === 'object' ? p : {}; };
   function markLesson(id, key) {
     const p = lessonProgress();
@@ -2087,18 +2089,37 @@
     const L = state.lang, prog = lessonProgress(), all = allLessons();
     const read = all.filter(l => prog[l.id] && prog[l.id].r).length;
     let html = `<p class="ch-progress-text">${esc(tf('lessonsRead', { r: read, n: all.length }))}</p>`;
-    window.LESSONS.forEach((ch, ci) => {
-      html += `<h3 class="lesson-ch">${esc(tf('chapterN', { n: ci + 1 }))} · ${esc(ch.ch[L])}</h3><div class="lesson-items">`;
-      for (const l of ch.lessons) {
-        const p = prog[l.id] || {};
-        html += `<button type="button" class="lesson-item${p.r ? ' read' : ''}" data-lesson="${l.id}"><span>${esc(l.t[L])}</span>` +
-          `<span class="lesson-marks">${p.r ? `<span title="${esc(t('lessonRead'))}">✓</span>` : ''}${p.p ? `<span title="${esc(t('lessonPracticed'))}">🎯</span>` : ''}</span></button>`;
+    // The shelf: each book opens to its chapters (the book you were reading stays open).
+    const openBook = books().find(bk => bk.chapters.some(ch => (ch.lessons || []).some(l => l.id === lessonView.id))) || books()[0];
+    for (const bk of books()) {
+      if (bk.kind === 'reader') {
+        const done = bk.chapters.filter((c, i) => prog['book:' + bk.id + ':' + i]).length;
+        html += `<details class="book${readerView.book === bk.id ? '' : ''}"${readerView.book === bk.id ? ' open' : ''}><summary><span class="book-icon" aria-hidden="true">${bk.icon}</span>` +
+          `<span class="book-t"><b>${esc(bk.t[L])}</b><small>${esc(bk.d[L])} · ${esc(tf('chaptersRead', { r: done, n: bk.chapters.length }))}</small></span></summary><div class="lesson-items">` +
+          bk.chapters.map((c, i) => `<button type="button" class="lesson-item${prog['book:' + bk.id + ':' + i] ? ' read' : ''}" data-read="${bk.id}" data-idx="${i}">` +
+            `<span>${esc(c.t)}${c.sub ? ' · ' + esc(c.sub) : ''}${c.game ? ' 🏛️' : ''}</span><span class="lesson-marks">${prog['book:' + bk.id + ':' + i] ? '✓' : ''}</span></button>`).join('') +
+          '</div></details>';
+        continue;
       }
-      html += '</div>';
-    });
+      const ls = bk.chapters.flatMap(ch => ch.lessons), done = ls.filter(l => prog[l.id] && prog[l.id].r).length;
+      html += `<details class="book"${bk === openBook ? ' open' : ''}><summary><span class="book-icon" aria-hidden="true">${bk.icon || '📘'}</span>` +
+        `<span class="book-t"><b>${esc(bk.t ? bk.t[L] : t('lessons'))}</b><small>${esc(bk.d ? bk.d[L] + ' · ' : '')}${esc(tf('lessonsRead', { r: done, n: ls.length }))}</small></span></summary>`;
+      bk.chapters.forEach((ch, ci) => {
+        html += `<h3 class="lesson-ch">${esc(tf('chapterN', { n: ci + 1 }))} · ${esc(ch.ch[L])}</h3><div class="lesson-items">`;
+        for (const l of ch.lessons) {
+          const p = prog[l.id] || {};
+          html += `<button type="button" class="lesson-item${p.r ? ' read' : ''}" data-lesson="${l.id}"><span>${esc(l.t[L])}</span>` +
+            `<span class="lesson-marks">${p.r ? `<span title="${esc(t('lessonRead'))}">✓</span>` : ''}${p.p ? `<span title="${esc(t('lessonPracticed'))}">🎯</span>` : ''}</span></button>`;
+        }
+        html += '</div>';
+      });
+      html += '</details>';
+    }
     box.innerHTML = html;
   }
   $('lessonList').addEventListener('click', e => {
+    const rb = e.target.closest('[data-read]');
+    if (rb) { openReader(rb.dataset.read, +rb.dataset.idx); return; }
     const b = e.target.closest('[data-lesson]');
     if (b) openLesson(b.dataset.lesson, 0);
   });
@@ -2112,6 +2133,7 @@
 
   // The diagram for a step: a glossary demo, a position, or a moment in a game.
   function stepDemo(l, s) {
+    if (s.board === false) return null; // a reading page with no diagram
     if (s.term) return (TERMS[s.term] && TERMS[s.term].demo) || null;
     if (s.ply !== undefined) {
       const g = new Core.Chess(START_FEN);
@@ -2136,7 +2158,7 @@
     if (s.term && TERMS[s.term]) {
       const tm = TERMS[s.term][L];
       text = `<h3 class="lesson-term">${esc(cap(tm.n))}</h3><p>${esc(tm.d)}</p><p><b>${esc(t('why'))}</b> ${esc(tm.w)}</p><p><b>${esc(t('example'))}</b> ${esc(tm.x)}</p>`;
-    } else text = `<p>${esc(s[L])}</p>`;
+    } else text = String(s[L]).split('\n\n').map(x => `<p>${esc(x)}</p>`).join(''); // blank lines separate paragraphs
     const next = all[idx + 1];
     const doIt = l.task || l.practice;
     $('lessonBody').innerHTML = `<div class="lesson-step">${esc(tf('stepOf', { a: i + 1, n }))}</div>
@@ -2148,6 +2170,8 @@
       </div>
       ${last ? `<div class="lesson-end">
         ${doIt ? `<button type="button" class="btn primary big" data-lnav="task">🎯 ${esc(t('yourTurn'))}</button>` : ''}
+        ${l.guess ? `<button type="button" class="btn${doIt ? '' : ' primary'} big" data-lnav="guess">🏛️ ${esc(t('guessTitle'))}</button>` : ''}
+        ${l.read ? `<button type="button" class="btn big" data-lnav="read">📖 ${esc(t('readInBook'))}</button>` : ''}
         ${next ? `<button type="button" class="btn big" data-lnav="nextLesson">${esc(t('nextLesson'))}: ${esc(next.t[L])} →</button>` : ''}
       </div>` : ''}`;
   }
@@ -2160,6 +2184,8 @@
       case 'next': lessonView.step++; renderLesson(); break;
       case 'nextLesson': openLesson(all[idx + 1].id, 0); break;
       case 'task': lessonTask(l, true); break;
+      case 'read': openReader(l.read.book, l.read.idx); break;
+      case 'guess': { const gm = (window.GUESS_GAMES || []).find(x => x.id === l.guess); if (gm) startGuess(gm); break; }
     }
   });
 
@@ -2168,7 +2194,9 @@
     const ctx = { id: l.id, title: l.t };
     if (l.task && first) {
       const tk = l.task;
-      startPuzzle({ i: 'lesson-' + l.id, f: tk.f, s: tk.s, g: tk.g, t: '', l: 0, c: 'l', en: tk.en, es: tk.es }, ctx);
+      let f = tk.f;
+      if (!f) { const g = new Core.Chess(START_FEN); for (const x of tk.moves.split(' ')) g.make(g.moveFromSan(x)); f = g.fen(); }
+      startPuzzle({ i: 'lesson-' + l.id, f, s: tk.s, g: tk.g, t: '', l: 0, c: 'l', en: tk.en, es: tk.es }, ctx);
       return;
     }
     if (!l.practice) { history.back(); return; }
@@ -2306,6 +2334,93 @@
     if (state.over || pz.step >= pz.line.length) { puzzleSolved(); return; }
     robotReply();
   }
+
+  // ---------------------------------------------------------------- book reader
+  // Classic public-domain books, complete and in their original words. The
+  // text loads when the book is opened (and stays available offline after
+  // that); every chapter ends with hands-on practice on the board.
+  const readerView = { book: null, idx: 0 };
+  const bookTexts = {};
+  const readerBook = () => books().find(b => b.id === readerView.book);
+  function loadBookText(bk) {
+    if (bookTexts[bk.id]) return Promise.resolve(bookTexts[bk.id]);
+    return fetch(bk.src).then(r => { if (!r.ok) throw new Error('load failed'); return r.json(); })
+      .then(d => { bookTexts[bk.id] = d; return d; });
+  }
+  function openReader(bookId, idx) {
+    readerView.book = bookId;
+    readerView.idx = idx;
+    if (state.screen === 'reader') { history.replaceState({ s: 'reader' }, ''); renderReader(); window.scrollTo(0, 0); }
+    else show('reader');
+  }
+  function renderReader() {
+    const bk = readerBook();
+    if (!bk) { show('lessons', false); return; }
+    const L = state.lang, i = readerView.idx, meta = bk.chapters[i];
+    $('readerTitle').textContent = meta.t + (meta.sub ? ' · ' + meta.sub : '');
+    const body = $('readerBody');
+    if (!bookTexts[bk.id]) {
+      body.innerHTML = `<p class="hint-text">${esc(t('loading'))}</p>`;
+      loadBookText(bk).then(() => { if (state.screen === 'reader') renderReader(); })
+        .catch(() => { body.innerHTML = `<p class="hint-text">${esc(t('loadFailed'))}</p>`; });
+      return;
+    }
+    const text = bookTexts[bk.id];
+    const p = lessonProgress();
+    p['book:' + bk.id + ':' + i] = { r: 1 };
+    store.set('lessonProgress', p);
+    // hands-on: the matching lessons, and for an annotated game, guessing the master's moves
+    let hands = '';
+    if (meta.hands) {
+      const all = allLessons();
+      hands += meta.hands.map(id => all.find(l => l.id === id)).filter(Boolean)
+        .map(l => `<button type="button" class="lesson-item" data-lesson="${l.id}"><span>📚 ${esc(l.t[L])}</span><span>→</span></button>`).join('');
+    }
+    if (meta.game) {
+      hands += `<button type="button" class="btn primary big" data-rd="guess" data-g="-1">🏛️ ${esc(tf('guessPlayer', { name: 'Capablanca' }))}</button>`;
+    }
+    (meta.games || []).forEach((g, gi) => {
+      hands += `<button type="button" class="lesson-item" data-rd="guess" data-g="${gi}"><span>🏛️ ${esc(t('guessGame'))}: ${esc(g.title)}</span><span>→</span></button>`;
+    });
+    const isLast = i === bk.chapters.length - 1;
+    body.innerHTML = `
+      <details class="panel notation-help"><summary>${esc(t('notationHelpTitle'))}</summary><div class="notation-text">${esc(t('notationHelp'))}</div></details>
+      ${L === 'es' ? `<p class="hint-text">${esc(t('bookEnglishOnly'))}</p>` : ''}
+      <article class="reader-text" lang="en">${text.chapters[i].html}${isLast && text.notes ? `<h3>Notes</h3>${text.notes}` : ''}</article>
+      ${hands ? `<section class="hands-on"><h3>🎯 ${esc(t('handsOn'))}</h3><div class="lesson-items">${hands}</div></section>` : ''}
+      <div class="lesson-nav">
+        <button type="button" class="btn" data-rd="prev" ${i === 0 ? 'disabled' : ''}>◀ ${esc(t('prevChapter'))}</button>
+        <button type="button" class="btn primary" data-rd="next" ${isLast ? 'disabled' : ''}>${esc(t('nextChapter'))} ▶</button>
+      </div>
+      <button type="button" class="btn small" data-rd="offline">⬇ ${esc(t('saveBookOffline'))}</button>
+      <p class="hint-text small credit">${esc(bk.credit ? bk.credit[L] : t('bookCredit'))}</p>`;
+  }
+  // Fetch every diagram once: the service worker keeps what it fetched, so the whole book reads offline.
+  function saveBookOffline(bk) {
+    loadBookText(bk).then(d => {
+      const urls = [...new Set(d.chapters.flatMap(c => [...c.html.matchAll(/src="([^"]+)"/g)].map(m => m[1])))];
+      toast('savingBook');
+      return Promise.all(urls.map(u => fetch(u).catch(() => null))).then(() => toast('bookSaved'));
+    }).catch(() => toast('loadFailed'));
+  }
+  $('readerBody').addEventListener('click', e => {
+    const lb = e.target.closest('[data-lesson]');
+    if (lb) { openLesson(lb.dataset.lesson, 0); return; }
+    const b = e.target.closest('[data-rd]');
+    if (!b || b.disabled) return;
+    const bk = readerBook(), meta = bk.chapters[readerView.idx];
+    if (b.dataset.rd === 'offline') { saveBookOffline(bk); return; }
+    if (b.dataset.rd === 'prev') openReader(bk.id, readerView.idx - 1);
+    else if (b.dataset.rd === 'next') openReader(bk.id, readerView.idx + 1);
+    else if (b.dataset.rd === 'guess' && +b.dataset.g >= 0) {
+      const g = meta.games[+b.dataset.g];
+      startGuess({ id: bk.id + '-' + readerView.idx + '-' + b.dataset.g, n: { en: g.title, es: g.title }, moves: g.moves, from: g.side === 'w' ? 0 : 1, a: null });
+    } else if (b.dataset.rd === 'guess' && meta.game) {
+      const g = meta.game;
+      startGuess({ id: bk.id + '-' + readerView.idx, n: { en: `${g.white} – ${g.black} (${meta.t})`, es: `${g.white} – ${g.black} (${meta.t})` },
+        moves: g.moves, from: g.side === 'w' ? 0 : 1, a: null });
+    }
+  });
 
   // ---------------------------------------------------------------- menu & setup
   function renderMenu() {

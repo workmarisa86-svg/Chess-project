@@ -661,3 +661,35 @@ button { font: inherit; color: inherit; }
 .lesson-end .btn.big { margin-top: 12px; }
 .menu-btn.daily { border: 2px solid #e9b72e; }
 .menu-btn.daily.done { border-color: var(--border); }
+details.book { margin: 12px 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); padding: 0 12px; }
+details.book > summary { list-style: none; display: flex; align-items: center; gap: 12px; padding: 12px 0; cursor: pointer; }
+details.book > summary::-webkit-details-marker { display: none; }
+details.book[open] > summary { border-bottom: 1px solid var(--border); }
+details.book > .lesson-items:last-child { margin-bottom: 12px; }
+.book-icon { font-size: 1.8rem; }
+.book-t { display: flex; flex-direction: column; gap: 2px; }
+.book-t small { color: var(--muted); font-size: .82rem; }
+
+/* ---------------- Book reader ---------------- */
+.reader-text { line-height: 1.65; font-size: 1.02rem; }
+.reader-text p { margin: 10px 0; }
+.reader-text .cenhead { text-align: center; font-weight: 700; margin: 18px 0 8px; }
+.reader-text .sc { font-variant: small-caps; }
+.reader-text h3 { margin: 24px 0 8px; }
+.reader-text figure { margin: 14px auto; text-align: center; }
+.reader-text figure img { width: min(300px, 100%); height: auto; border-radius: 4px; background: #fff; }
+:root[data-theme="dark"] .reader-text figure img { filter: invert(.88) hue-rotate(180deg); }
+.reader-text table { margin: 8px auto; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.reader-text td { padding: 1px 14px 1px 0; white-space: nowrap; }
+.reader-text sup { font-size: .75em; }
+.notation-help { margin-bottom: 12px; }
+.notation-help .notation-text { padding: 0 14px 12px; font-size: .92rem; line-height: 1.5; }
+.hands-on { margin: 26px 0 14px; padding: 12px; border: 2px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+.hands-on h3 { margin: 0 0 10px; }
+.credit { margin-top: 18px; }
+.reader-text .boardno, .reader-text .boardcolor, .reader-text .center, .reader-text .sectionhead { text-align: center; }
+.reader-text .boardcolor { font-size: .8rem; letter-spacing: .1em; margin: 2px 0; color: var(--muted); }
+.reader-text .sectionhead { font-weight: 700; margin-top: 18px; }
+.reader-text .chapcon { font-size: .9rem; color: var(--muted); text-align: center; }
+.reader-text figure img[src$=".gif"] { width: min(304px, 100%); image-rendering: auto; }
+.reader-text td img { width: 32px; height: 32px; }
