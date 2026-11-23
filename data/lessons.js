@@ -440,3 +440,379 @@ self.BOOKS = [
     ]
   }
 ];
+
+// Classic books: the complete original text, read in the book reader (chapters load on demand).
+self.BOOKS.push({
+ "id": "fundamentals",
+ "kind": "reader",
+ "icon": "📖",
+ "src": "books/fundamentals/text.json",
+ "t": {
+  "en": "Chess Fundamentals, by J. R. Capablanca (1921)",
+  "es": "Chess Fundamentals, de J. R. Capablanca (1921)"
+ },
+ "d": {
+  "en": "The complete original book, in English, with its 150 diagrams. Each chapter ends with hands-on practice.",
+  "es": "El libro original completo, en inglés, con sus 150 diagramas. Cada capítulo termina con práctica en el tablero."
+ },
+ "chapters": [
+  {
+   "t": "Chapter I",
+   "sub": "First Principles: Endings, Middle-Game and Openings",
+   "hands": [
+    "mateQueen",
+    "mateRook",
+    "kp",
+    "center"
+   ]
+  },
+  {
+   "t": "Chapter II",
+   "sub": "Further Principles in End-Game Play",
+   "hands": [
+    "kp",
+    "square",
+    "breakthrough",
+    "convert"
+   ]
+  },
+  {
+   "t": "Chapter III",
+   "sub": "Planning a Win in Middle-Game Play",
+   "hands": [
+    "plans",
+    "fork"
+   ]
+  },
+  {
+   "t": "Chapter IV",
+   "sub": "General Theory",
+   "hands": [
+    "plans",
+    "values",
+    "pin"
+   ]
+  },
+  {
+   "t": "Chapter V",
+   "sub": "End-Game Strategy",
+   "hands": [
+    "convert",
+    "lucena",
+    "philidor"
+   ]
+  },
+  {
+   "t": "Chapter VI",
+   "sub": "Further Openings and Middle-Games",
+   "hands": [
+    "center",
+    "traps",
+    "plans"
+   ]
+  },
+  {
+   "t": "Game 1. Queen's Gambit Declined",
+   "sub": "",
+   "game": {
+    "white": "F. J. Marshall",
+    "black": "J. R. Capablanca",
+    "moves": "d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 e3 Ne4 Bxe7 Qxe7 Bd3 Nxc3 bxc3 Nd7 Nf3 O-O cxd5 exd5 Qb3 Nf6 a4 c5 Qa3 b6 a5 Bb7 O-O Qc7 Rfb1 Nd7 Bf5 Rfc8 Bxd7 Qxd7 a6 Bc6 dxc5 bxc5 Qxc5 Rab8 Rxb8 Rxb8 Ne5 Qf5 f4 Rb6 Qxb6",
+    "side": "b"
+   }
+  },
+  {
+   "t": "Game 2. Queen's Gambit Declined",
+   "sub": "",
+   "game": {
+    "white": "A. K. Rubinstein",
+    "black": "J. R. Capablanca",
+    "moves": "d4 d5 Nf3 c5 c4 e6 cxd5 exd5 Nc3 Nc6 g3 Be6 Bg2 Be7 O-O Rc8 dxc5 Bxc5 Ng5 Nf6 Nxe6 fxe6 Bh3 Qe7 Bg5 O-O Bxf6 Qxf6 Nxd5 Qh6 Kg2 Rcd8 Qc1 exd5 Qxc5 Qd2 Qb5 Nd4 Qd3 Qxd3 exd3 Rfe8 Bg4 Rd6 Rfe1 Rxe1 Rxe1 Rb6 Re5 Rxb2 Rxd5 Nc6 Be6+ Kf8 Rf5+ Ke8 Bf7+ Kd7 Bc4 a6 Rf7+ Kd6 Rxg7 b5 Bg8 a5 Rxh7 a4 h4 b4 Rh6+ Kc5 Rh5+ Kb6 Bd5 b3 axb3 a3 Bxc6 Rxb3 Bd5 a2 Rh6+",
+    "side": "b"
+   }
+  },
+  {
+   "t": "Game 3. Irregular Defence",
+   "sub": "",
+   "game": {
+    "white": "D. Janowski",
+    "black": "J. R. Capablanca",
+    "moves": "d4 Nf6 Nf3 d6 Bg5 Nbd7 e3 e5 Nc3 c6 Bd3 Be7 Qe2 Qa5 O-O Nf8 Rfd1 Bg4 h3 Bh5 dxe5 dxe5 Ne4 Nxe4 Bxe7 Kxe7 Bxe4 Bg6 Qc4 Ne6 b4 Qc7 Bxg6 hxg6 Qe4 Kf6 Rd3 Rad8 Rad1 g5 c4 Rxd3 Rxd3 Rd8 Rxd8 Nxd8 h4 gxh4 Qxh4+ Ke6 Qg4+ Kf6 Qg5+ Ke6 Qxg7 Qd6 c5 Qd5 e4 Qd1+ Kh2 f6 Qg4+ Ke7 Nxe5 Qxg4 Nxg4 Ne6 e5 fxe5 Nxe5 Nd4",
+    "side": "b"
+   }
+  },
+  {
+   "t": "Game 4. French Defence",
+   "sub": "",
+   "game": {
+    "white": "J. R. Capablanca",
+    "black": "E. A. Snosko-Borovski",
+    "moves": "d4 e6 e4 d5 Nc3 Nf6 Bg5 Bb4 exd5 Qxd5 Bxf6 Bxc3+ bxc3 gxf6 Nf3 b6 Qd2 Bb7 Be2 Nd7 c4 Qf5 O-O-O O-O-O Qe3 Rhg8 g3 Qa5 Rd3 Kb8 Rhd1 Qf5 Nh4 Qg5 f4 Qg7 Bf3 Rge8 Bxb7 Kxb7 c5 c6 Nf3 Qf8 Nd2 bxc5 Nc4 Nb6 Na5+ Ka8 dxc5 Nd5 Qd4 Rc8 c4 e5 Qg1 e4 cxd5 exd3 d6 Re2 d7 Rc2+ Kb1 Rb8+ Nb3 Qe7 Rxd3 Re2 Qd4 Rd8 Qa4 Qe4 Qa6 Kb8 Kc1 Rxd7 Nd4 Re1+",
+    "side": "w"
+   }
+  },
+  {
+   "t": "Game 5. Ruy Lopez",
+   "sub": "",
+   "game": {
+    "white": "Dr. E. Lasker",
+    "black": "J. R. Capablanca",
+    "moves": "e4 e5 Nf3 Nc6 Bb5 a6 Bxc6 dxc6 d4 exd4 Qxd4 Qxd4 Nxd4 Bd6 Nc3 Ne7 O-O O-O f4 Re8 Nb3 f6 f5 b6 Bf4 Bb7 Bxd6 cxd6 Nd4 Rad8 Ne6 Rd7 Rad1 Nc8 Rf2 b5 Rfd2 Rde7 b4 Kf7 a3 Ba8 Kf2 Ra7 g4 h6 Rd3 a5 h4 axb4 axb4 Rae7 Kf3 Rg8 Kf4 g6 Rg3 g5+ Kf3 Nb6 hxg5 hxg5 Rh3 Rd7 Kg3 Ke8 Rdh1 Bb7 e5 dxe5 Ne4 Nd5 N6c5 Bc8 Nxd7 Bxd7 Rh7 Rf8 Ra1 Kd8 Ra8+ Bc8 Nc5",
+    "side": "b"
+   }
+  },
+  {
+   "t": "Game 6. French Defence",
+   "sub": "",
+   "game": {
+    "white": "O. Chajes",
+    "black": "J. R. Capablanca",
+    "moves": "e4 e6 d4 d5 Nc3 Nf6 Bg5 Bb4 e5 h6 Bd2 Bxc3 bxc3 Ne4 Qg4 Kf8 Bc1 c5 Bd3 Qa5 Ne2 cxd4 O-O dxc3 Bxe4 dxe4 Qxe4 Nc6 Rd1 g6 f4 Kg7 Be3 Ne7 Bf2 Nd5 Rd3 Bd7 Nd4 Rac8 Rg3 Kh7 h4 Rhg8 h5 Qb4 Rh3 f5 exf6 Nxf6 hxg6+ Rxg6 Rxh6+ Kxh6 Nf5+ exf5 Qxb4 Rcg8 g3 Bc6 Rd1 Kh5 Rd6 Be4 Qxc3 Nd5 Rxg6 Kxg6 Qe5 Kf7 c4 Re8 Qb2 Nf6 Bd4 Rh8 Qb5 Rh1+ Kf2 a6 Qb6 Rh2+ Ke1 Nd7 Qd6 Bc6 g4 fxg4 f5 Rh1+ Kd2 Ke8 f6 Rh7 Qe6+ Kf8 Be3 Rf7 Bh6+ Kg8 Bg7 g3 Ke2 g2 Kf2 Nf8 Qg4 Nd7 Kg1 a5 a4 Bxa4 Qh3 Rxf6 Bxf6 Nxf6 Qxg2+ Kf8 Qxb7",
+    "side": "b"
+   }
+  },
+  {
+   "t": "Game 7. Ruy Lopez",
+   "sub": ""
+  },
+  {
+   "t": "Game 8. Centre Game",
+   "sub": "",
+   "game": {
+    "white": "J. Mieses",
+    "black": "J. R. Capablanca",
+    "moves": "e4 e5 d4 exd4 Qxd4 Nc6 Qe3 Nf6 Nc3 Bb4 Bd2 O-O O-O-O Re8 Qg3 Nxe4 Nxe4 Rxe4 Bf4 Qf6 Nh3 d6 Bd3 Nd4 Be3 Bg4 Ng5 Rxe3 Qxg4 Ne2+ Bxe2 Rxe2 Ne4 Rxe4 Qxe4 Qg5+ f4 Qb5 c3 Bc5 Rhe1 Qc6 Rd5 Qd7 f5 c6 Rd2 d5 Qf3 Be7 Rde2 Bf6 Qh5 h6 g4 Kh7 Kb1 Rd8 Rd1 c5 Qh3 Qa4 Red2 Qe4+ Ka1 b5 Qg2 Qa4 Kb1 b4 cxb4 Qxb4 a3 Qa4 Rxd5 Rb8 R1d2 c4 Qg3 Rb3 Qd6 c3 Rc2 cxb2 Rd3 Qe4 Rd1 Rc3",
+    "side": "b"
+   }
+  },
+  {
+   "t": "Game 9. Queen's Gambit Declined",
+   "sub": "",
+   "game": {
+    "white": "J. R. Capablanca",
+    "black": "R. Teichmann",
+    "moves": "d4 d5 Nf3 Nf6 c4 e6 Bg5 Be7 Nc3 Nbd7 e3 O-O Rc1 b6 cxd5 exd5 Bb5 Bb7 O-O a6 Ba4 Rc8 Qe2 c5 dxc5 Nxc5 Rfd1 Nxa4 Nxa4 b5 Rxc8 Qxc8 Nc3 Qc4 Nd4 Qxe2 Ncxe2 Rc8 Nf5 Kf8 Nxe7 Kxe7 Nd4 g6 f3 h6 Bxh6 Nd7 h4 Nc5 Bf4 Ne6 Nxe6 Kxe6 Rd2 Rh8 Rc2 Rc8 Rxc8 Bxc8 Kf2 d4 exd4 Kd5 Ke3 Be6 Kd3 Kc6 a3 Bc4+ Ke3 Be6 Bh6 Kd5 Bg7",
+    "side": "w"
+   }
+  },
+  {
+   "t": "Game 10. Petroff Defence",
+   "sub": "",
+   "game": {
+    "white": "J. R. Capablanca",
+    "black": "F. J. Marshall",
+    "moves": "e4 e5 Nf3 Nf6 Nxe5 d6 Nf3 Nxe4 Qe2 Qe7 d3 Nf6 Bg5 Be6 Nc3 h6 Bxf6 Qxf6 d4 Be7 Qb5+ Nd7 Bd3 g5 h3 O-O Qxb7 Rab8 Qe4 Qg7 b3 c5 O-O cxd4 Nd5 Bd8 Bc4 Nc5 Qxd4 Qxd4 Nxd4 Bxd5 Bxd5 Bf6 Rad1 Bxd4 Rxd4 Kg7 Bc4 Rb6 Re1 Kf6 f4 Ne6 fxg5+ hxg5 Rf1+ Ke7 Rg4 Rg8 Rf5 Rc6 h4 Rgc8 hxg5 Rc5 Bxe6 fxe6 Rxc5 Rxc5 g6 Kf8 Rc4 Ra5 a4 Kg7 Rc6 Rd5 Rc7+ Kxg6 Rxa7 Rd1+ Kh2 d5 a5 Rc1 Rc7 Ra1 b4 Ra4 c3 d4 Rc6 dxc3 Rxc3 Rxb4 Ra3 Rb7 a6 Ra7 Ra5 Kf6 g4 Ke7 Kg3 Kd6 Kf4 Kc7 Ke5 Kd7 g5 Ke7 g6 Kf8 Kxe6 Ke8 g7 Rxg7 a7 Rg6+ Kf5",
+    "side": "w"
+   }
+  },
+  {
+   "t": "Game 11. Ruy Lopez",
+   "sub": "",
+   "game": {
+    "white": "J. R. Capablanca",
+    "black": "D. Janowski",
+    "moves": "e4 e5 Nf3 Nc6 Bb5 a6 Bxc6 dxc6 Nc3 Bc5 d3 Bg4 Be3 Bxe3 fxe3 Qe7 O-O O-O-O Qe1 Nh6 Rb1 f6 b4 Nf7 a4 Bxf3 Rxf3 b6 b5 cxb5 axb5 a5 Nd5 Qc5 c4 Ng5 Rf2 Ne6 Qc3 Rd7 Rd1 Kb7 d4 Qd6 Rc2 exd4 exd4 Nf4 c5 Nxd5 exd5 Qxd5 c6+ Kb8 cxd7 Qxd7 d5 Re8 d6 cxd6 Qc6",
+    "side": "w"
+   }
+  },
+  {
+   "t": "Game 12. French Defence",
+   "sub": ""
+  },
+  {
+   "t": "Game 13. Ruy Lopez",
+   "sub": "",
+   "game": {
+    "white": "J. S. Morrison",
+    "black": "J. R. Capablanca",
+    "moves": "e4 e5 Nf3 Nc6 Bb5 d6 Nc3 Bd7 d4 exd4 Nxd4 g6 Nf3 Bg7 Bg5 Nf6 Qd2 h6 Bh4 O-O O-O-O Re8 Rhe1 g5 Bg3 Nh5 Nd5 a6 Bd3 Be6 c3 f5 h4 f4 hxg5 hxg5 Rh1 Bf7 Kb1 Ne5 Nxe5 Rxe5 Bh2 Nf6 g3 Nxe4 Bxe4 Rxe4 gxf4 c6 Ne3 Qa5 c4 Qxd2 Rxd2 gxf4 Ng4 Bg6 Ka1 Rae8 a3 Re1+ Rxe1 Rxe1+ Ka2 Bf7 Kb3 d5 Bxf4 dxc4+ Kb4 c3 bxc3 Re4+ c4 Rxc4+ Ka5 Rxf4 Rd8+ Kh7 Rd7 Be6",
+    "side": "b"
+   }
+  },
+  {
+   "t": "Game 14. Queen's Gambit Declined",
+   "sub": "",
+   "game": {
+    "white": "F. J. Marshall",
+    "black": "J. R. Capablanca",
+    "moves": "d4 d5 Nf3 Nf6 c4 e6 Nc3 Nbd7 Bg5 Be7 e3 O-O Rc1 c6 Qc2 dxc4 Bxc4 Nd5 Bxe7 Qxe7 O-O Nxc3 Qxc3 b6 e4 Bb7 Rfe1 Rfd8 d5 Nc5 dxe6 Nxe6 Bxe6 Qxe6 Nd4 Qe5 Nxc6 Qxc3 Rxc3 Rd2 Rb1 Re8 e5 g5 h4 gxh4 Re1 Re6 Rec1 Kg7 b4 b5 a3 Rg6 Kf1 Ra2 Kg1 h3 g3 a6 e6 Rxe6 g4 Rh6 f3 Rd6 Ne7 Rdd2 Nf5+ Kf6 Nh4 Kg5 Nf5 Rg2+ Kf1 h2 f4+ Kxf4",
+    "side": "b"
+   }
+  }
+ ]
+});
+
+// ---------------------------------------------------------------- five more books (our own text)
+self.BOOKS.splice(3, 0,
+  {
+    id: 'tactics', icon: '🧩', t: { en: 'Tactics Patterns', es: 'Patrones tácticos' },
+    d: { en: 'The patterns strong players see at a glance: famous mates and the tricks that win material.', es: 'Los patrones que los jugadores fuertes ven de un vistazo: mates famosos y los trucos que ganan material.' },
+    chapters: [
+      {
+        ch: { en: 'Famous mating patterns', es: 'Patrones de mate famosos' },
+        lessons: [
+          {
+            id: 'tpGreek', t: { en: 'The Greek gift (Bxh7+)', es: 'El regalo griego (Axh7+)' },
+            steps: [
+              { board: false, en: 'The Greek gift is one of the oldest attacking ideas in chess. A bishop is sacrificed on h7 (or h2 for Black) with check, the king has to take it, and then a knight and the queen come in for a quick attack.\n\nIt works when three things are true. First, a bishop can reach h7 and a knight can jump to g5. Second, the queen can reach the h-file quickly (often Qh5). Third, the defender has no piece that can cover h7 or capture on g5: the knight that usually stands on f6 has gone, and no bishop guards g5.\n\nBefore you sacrifice, check the king\'s escape squares after Ng5+: if the king can run to g6 or h6 safely, the attack may fail. Strong players count these details first and only then give the piece.', es: 'El regalo griego es una de las ideas de ataque más antiguas del ajedrez. Se sacrifica un alfil en h7 (o en h2 si juegan las negras) dando jaque, el rey tiene que capturarlo, y entonces entran un caballo y la dama para un ataque rápido.\n\nFunciona cuando se cumplen tres cosas. Primero, un alfil puede llegar a h7 y un caballo puede saltar a g5. Segundo, la dama puede llegar pronto a la columna h (a menudo Dh5). Tercero, el defensor no tiene ninguna pieza que cubra h7 o capture en g5: el caballo que suele estar en f6 se ha ido y ningún alfil vigila g5.\n\nAntes de sacrificar, comprueba las casillas de escape del rey tras Cg5+: si el rey puede huir a g6 o h6 con seguridad, el ataque puede fallar. Los jugadores fuertes cuentan estos detalles primero y solo después entregan la pieza.' },
+              { fen: 'r1bq1rk1/p1pnb2p/1p2p3/3pB1p1/3P4/2PBP3/PP3PPP/RN1Q1RK1 w - - 2 13', arrows: [['d3', 'h7'], ['d1', 'h5']], en: 'A position from a real game: Black\'s king has few defenders and the queen can reach h5 at once. Bxh7+! Kxh7 and Qh5+ breaks in. Here the queen does the work that the knight on g5 does in the classic version.', es: 'Una posición de una partida real: el rey negro tiene pocos defensores y la dama puede llegar a h5 enseguida. ¡Axh7+! Rxh7 y Dh5+ entra en el ataque. Aquí la dama hace el trabajo que en la versión clásica hace el caballo en g5.' }
+            ],
+            task: { f: 'r1bq1rk1/p1pnb2p/1p2p3/3pB1p1/3P4/2PBP3/PP3PPP/RN1Q1RK1 w - - 2 13', s: 'd3h7 g8h7 d1h5 h7g8 h5g6', g: 'm3', en: 'Bxh7+! Kxh7, Qh5+ Kg8 and the queen mates: a Greek gift that ends in checkmate.', es: '¡Axh7+! Rxh7, Dh5+ Rg8 y la dama da mate: un regalo griego que termina en jaque mate.' },
+            practice: { c: 't', t: 'sacrifice' }
+          },
+          {
+            id: 'tpArabian', t: { en: 'The Arabian mate', es: 'El mate árabe' },
+            steps: [
+              { board: false, en: 'The Arabian mate is one of the oldest known patterns, already described in Arabic chess manuscripts more than a thousand years ago. A rook and a knight work together against a king in the corner.\n\nThe knight stands two squares away diagonally from the corner (for example on f6 against a king on h8). It protects the rook and covers the square g8. The rook then gives check on the h-file or on the 7th rank, right next to the king. The king cannot take the rook because the knight defends it, and it has no squares left.\n\nRemember the shape: king in the corner, knight a "knight\'s jump" from the rook\'s square. When you see it, look for the rook check.', es: 'El mate árabe es uno de los patrones más antiguos que se conocen, ya descrito en manuscritos de ajedrez árabes hace más de mil años. Una torre y un caballo colaboran contra un rey en la esquina.\n\nEl caballo se sitúa a dos casillas en diagonal de la esquina (por ejemplo en f6 contra un rey en h8). Protege a la torre y cubre la casilla g8. Entonces la torre da jaque en la columna h o en la séptima fila, justo al lado del rey. El rey no puede comer la torre porque la defiende el caballo, y no le quedan casillas.\n\nRecuerda la forma: rey en la esquina y caballo a un salto de la casilla de la torre. Cuando la veas, busca el jaque de torre.' },
+              { fen: '7k/7R/5N2/8/8/8/8/6K1 b - - 0 1', marks: ['h8'], en: 'The finished pattern: Rh7 is protected by the knight on f6, which also covers g8.', es: 'El patrón terminado: la torre de h7 está protegida por el caballo de f6, que además cubre g8.' }
+            ],
+            task: { f: '7k/R7/5N2/8/8/8/8/6K1 w - - 0 1', s: 'a7h7', g: 'm1', en: 'Rh7 is the Arabian mate.', es: 'Th7 es el mate árabe.' },
+            practice: { c: 't', t: 'checkmate' }
+          },
+          {
+            id: 'tpAnastasia', t: { en: 'Anastasia\'s mate', es: 'El mate de Anastasia' },
+            steps: [
+              { board: false, en: 'Anastasia\'s mate takes its name from a novel of the early 1800s in which it appears. A knight and a rook (or queen) trap a king on the edge of the board.\n\nThe king stands on h7 with its own pawn on g7. A knight on e7 covers g8 and g6. Now any rook or queen check along the h-file is mate: the king cannot go to g6 or g8, its own pawn blocks g7, and the h-file is controlled.\n\nThe pattern often appears after a sacrifice on h7 or h6 that opens the h-file. When an enemy king is on the edge with your knight close by, think of Anastasia.', es: 'El mate de Anastasia toma su nombre de una novela de principios del siglo XIX en la que aparece. Un caballo y una torre (o la dama) atrapan a un rey en el borde del tablero.\n\nEl rey está en h7 con su propio peón en g7. Un caballo en e7 cubre g8 y g6. Entonces cualquier jaque de torre o dama por la columna h es mate: el rey no puede ir a g6 ni a g8, su propio peón tapa g7 y la columna h está controlada.\n\nEl patrón suele aparecer tras un sacrificio en h7 o h6 que abre la columna h. Cuando el rey rival está en el borde y tu caballo está cerca, piensa en Anastasia.' },
+              { fen: '5r2/4N1pk/8/8/7R/8/8/6K1 b - - 0 1', marks: ['h7', 'g8', 'g6'], en: 'Rh4 is mate: the knight on e7 covers g8 and g6.', es: 'Th4 es mate: el caballo de e7 cubre g8 y g6.' }
+            ],
+            task: { f: '5r2/4N1pk/8/8/R7/8/8/6K1 w - - 0 1', s: 'a4h4', g: 'm1', en: 'Rh4 is Anastasia\'s mate.', es: 'Th4 es el mate de Anastasia.' },
+            practice: { c: 't', t: 'checkmate' }
+          }
+        ]
+      },
+      {
+        ch: { en: 'Tricks that win material', es: 'Trucos que ganan material' },
+        lessons: [
+          { id: 'tpWindmill', t: { en: 'The windmill', es: 'El molino' }, steps: [{ board: false, en: 'A windmill is a series of discovered checks. One piece gives check, the king steps aside, and the other piece moves again with a new discovered check, capturing something each time. Like the sails of a windmill, it turns again and again.\n\nThe key ingredients are a piece that gives check along a line (a rook, bishop or queen) and a second piece in front of it that can move away and capture. The defender is always in check and never has time to save anything.\n\nA famous example is in Byrne vs. Fischer, 1956, explained in the Masterpieces book: Fischer\'s bishop and knight took piece after piece with discovered checks.', es: 'Un molino es una serie de jaques a la descubierta. Una pieza da jaque, el rey se aparta, y la otra pieza vuelve a moverse con un nuevo jaque a la descubierta, capturando algo cada vez. Como las aspas de un molino, gira una y otra vez.\n\nLos ingredientes son una pieza que da jaque en línea (torre, alfil o dama) y otra delante de ella que puede apartarse y capturar. El defensor está siempre en jaque y nunca tiene tiempo de salvar nada.\n\nUn ejemplo famoso está en Byrne contra Fischer, 1956, explicada en el libro Obras maestras: el alfil y el caballo de Fischer se llevaron pieza tras pieza con jaques a la descubierta.' }, { term: 'discoveredCheck' }], practice: { c: 't', t: 'discoveredCheck' } },
+          { id: 'tpClearance', t: { en: 'Clearance and interference', es: 'Despeje e interferencia' }, steps: [{ board: false, en: 'Sometimes your own piece is in the way. A clearance sacrifice gives up that piece, often with check or a threat, just to empty a square or a line for another piece. The question to ask is: "If this piece were not here, what could I do?"\n\nInterference is the opposite idea: you put a piece on a line between two enemy pieces so that one can no longer defend the other. For example, a piece dropped between a rook and the square it protects cuts the connection, and the defended piece falls.\n\nBoth ideas are about lines. Look at the lines your pieces would like to use, and the lines your opponent\'s defenders depend on.', es: 'A veces tu propia pieza estorba. Un sacrificio de despeje entrega esa pieza, a menudo con jaque o amenaza, solo para vaciar una casilla o una línea para otra pieza. La pregunta es: "Si esta pieza no estuviera aquí, ¿qué podría hacer?"\n\nLa interferencia es la idea contraria: colocas una pieza en una línea entre dos piezas rivales para que una ya no pueda defender a la otra. Por ejemplo, una pieza que se interpone entre una torre y la casilla que protege corta la conexión, y la pieza defendida cae.\n\nAmbas ideas tratan de líneas. Mira las líneas que tus piezas querrían usar y las líneas de las que dependen los defensores rivales.' }, { term: 'deflection' }], practice: { c: 't', t: 'deflection' } },
+          { id: 'tpDesperado', t: { en: 'Desperado and the in-between move', es: 'Desesperado y la jugada intermedia' }, steps: [{ board: false, en: 'A "desperado" is a piece that is lost anyway, so before it dies it captures as much as it can. If your knight is attacked and cannot be saved, maybe it can take a pawn, or even give check, before it is captured.\n\nThe in-between move (zwischenzug) is related: instead of the expected recapture, you first play a stronger move, usually a check or a big threat, and recapture afterwards. Many tactics fail because the attacker forgot about the defender\'s in-between move.\n\nThe habit to build: in every exchange, before you recapture automatically, ask whether there is a check or a threat to play first.', es: 'Un "desesperado" es una pieza que se va a perder de todos modos, así que antes de caer captura todo lo que puede. Si tu caballo está atacado y no se puede salvar, quizá pueda comer un peón, o incluso dar jaque, antes de que lo capturen.\n\nLa jugada intermedia (zwischenzug) está relacionada: en lugar de la recaptura esperada, juegas primero una jugada más fuerte, normalmente un jaque o una gran amenaza, y recapturas después. Muchas combinaciones fallan porque el atacante olvidó la jugada intermedia del defensor.\n\nEl hábito que debes crear: en cada cambio, antes de recapturar automáticamente, pregúntate si hay un jaque o una amenaza que jugar primero.' }, { term: 'zwischenzug' }], practice: { c: 't', t: 'hangingPiece' } },
+          { id: 'tpXray', t: { en: 'X-rays and double attacks', es: 'Rayos X y dobles ataques' }, steps: [{ term: 'xray' }, { term: 'doubleAttack' }], practice: { c: 't', t: 'doubleAttack' } }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'endgames', icon: '🏁', t: { en: 'Endgame Essentials', es: 'Finales esenciales' },
+    d: { en: 'The endings every player must know, so that won games are really won and lost ones are saved.', es: 'Los finales que todo jugador debe conocer, para ganar las partidas ganadas y salvar las perdidas.' },
+    chapters: [
+      {
+        ch: { en: 'King and pawns', es: 'Rey y peones' },
+        lessons: [
+          {
+            id: 'egKey', t: { en: 'Key squares', es: 'Casillas clave' },
+            steps: [
+              { board: false, en: 'Key squares are the squares where, if your king reaches them, your pawn will promote no matter what the defender does. They are more useful than counting moves.\n\nFor a pawn that has not yet crossed the middle of the board (on its 2nd, 3rd or 4th rank), the key squares are the three squares two ranks in front of it. For a pawn on e4, they are d6, e6 and f6. Once the pawn reaches the 5th rank, the key squares are also the squares directly beside the square in front, so for a pawn on e5 they include d6, e6 and f6 and also d7, e7 and f7.\n\nSo the plan in king and pawn endings is not to push the pawn first, but to bring your king to a key square. The defender fights for those same squares, often using the opposition.', es: 'Las casillas clave son las casillas a las que, si llega tu rey, tu peón coronará haga lo que haga el defensor. Son más útiles que contar jugadas.\n\nPara un peón que aún no ha cruzado el centro del tablero (en su 2ª, 3ª o 4ª fila), las casillas clave son las tres casillas dos filas por delante. Para un peón en e4 son d6, e6 y f6. Cuando el peón llega a la 5ª fila, también son clave las casillas de al lado de la casilla de delante, así que para un peón en e5 son d6, e6, f6 y también d7, e7 y f7.\n\nPor eso el plan en los finales de rey y peón no es empujar primero el peón, sino llevar el rey a una casilla clave. El defensor lucha por esas mismas casillas, muchas veces usando la oposición.' },
+              { fen: '8/8/4k3/8/4P3/8/4K3/8 w - - 0 1', marks: ['d6', 'e6', 'f6'], en: 'Pawn on e4: the key squares are d6, e6 and f6. Here the black king stands on one of them, so White must first fight for the opposition.', es: 'Peón en e4: las casillas clave son d6, e6 y f6. Aquí el rey negro está en una de ellas, así que las blancas deben luchar primero por la oposición.' },
+              { term: 'opposition' }
+            ],
+            practice: { c: 'e', t: 'opposition' }
+          },
+          {
+            id: 'egRookPawn', t: { en: 'The rook pawn and the wrong bishop', es: 'El peón de torre y el alfil equivocado' },
+            steps: [
+              { board: false, en: 'Pawns on the a- and h-files are special. If the defending king reaches the corner in front of the pawn, the stronger side usually cannot win: the attacking king can only take away the king\'s last squares by giving stalemate.\n\nEven an extra bishop does not always help. If the bishop does not control the corner square where the pawn promotes (for example a dark-squared bishop with an h-pawn, whose promotion square h8 is light), the defender sits in the corner and the game is a draw. This is called the "wrong bishop".\n\nPractical advice: when you are losing an ending, look for a way to reach that corner. When you are winning, keep the enemy king away from it.', es: 'Los peones de las columnas a y h son especiales. Si el rey defensor llega a la esquina delante del peón, el bando fuerte normalmente no puede ganar: el rey atacante solo puede quitarle las últimas casillas dando ahogado.\n\nNi siquiera un alfil de más ayuda siempre. Si el alfil no controla la casilla de coronación (por ejemplo, un alfil de casillas oscuras con un peón h, que corona en h8, casilla clara), el defensor se queda en la esquina y la partida es tablas. Es el "alfil equivocado".\n\nConsejo práctico: cuando estés perdiendo un final, busca la forma de llegar a esa esquina. Cuando estés ganando, mantén lejos de ella al rey rival.' },
+              { fen: '7k/8/5K2/7P/8/8/8/8 b - - 0 1', marks: ['h8'], en: 'The black king in the corner: White cannot win, whatever he tries.', es: 'El rey negro en la esquina: las blancas no pueden ganar, hagan lo que hagan.' }
+            ],
+            practice: { c: 'e', t: 'kingPawnEnding' }
+          },
+          { id: 'egBreak', t: { en: 'Passed pawns and breakthroughs', es: 'Peones pasados y rupturas' }, steps: [{ term: 'passedPawn' }, { term: 'ruleOfSquare' }, { term: 'breakthrough' }], practice: { c: 'e', t: 'breakthrough' } }
+        ]
+      },
+      {
+        ch: { en: 'Pieces against pawns, and mates', es: 'Piezas contra peones, y mates' },
+        lessons: [
+          {
+            id: 'egRookBehind', t: { en: 'Rooks belong behind passed pawns', es: 'Las torres, detrás de los peones pasados' },
+            steps: [
+              { board: false, en: 'One of the most useful rules in rook endings: put your rook behind passed pawns. This is true for your own passed pawn and for your opponent\'s.\n\nBehind your own pawn, the rook supports it all the way and gets more active with every step the pawn takes. In front of the pawn, the rook gets more and more passive. Behind the enemy pawn, your rook stops it from the back and the enemy rook in front of it is tied down.\n\nIn rook endings, activity is usually worth more than a pawn. A passive rook that only defends often loses even with equal material.', es: 'Una de las reglas más útiles de los finales de torres: coloca la torre detrás de los peones pasados. Vale para tu propio peón pasado y para el del rival.\n\nDetrás de tu peón, la torre lo apoya todo el camino y es más activa con cada paso que da el peón. Delante del peón, la torre se vuelve cada vez más pasiva. Detrás del peón rival, tu torre lo frena desde atrás y la torre rival que está delante queda atada.\n\nEn los finales de torres, la actividad suele valer más que un peón. Una torre pasiva que solo defiende muchas veces pierde incluso con material igualado.' },
+              { fen: '8/8/4k3/P7/8/8/8/R5K1 w - - 0 1', arrows: [['a1', 'a5']], en: 'The rook on a1 supports the a-pawn from behind: as the pawn advances, the rook gets even more room.', es: 'La torre de a1 apoya al peón a desde atrás: a medida que avanza el peón, la torre gana aún más espacio.' },
+              { term: 'lucena' },
+              { term: 'philidorPosition' }
+            ],
+            practice: { c: 'e', l: 3 }
+          },
+          {
+            id: 'egQueenPawn', t: { en: 'Queen against a pawn', es: 'Dama contra peón' },
+            steps: [
+              { board: false, en: 'A queen against a pawn on its 7th rank, supported by its king, is usually a win, but the method is worth knowing. The queen gives checks and pins to force the enemy king in front of its own pawn. Each time that happens, your own king gets one free move to come closer.\n\nThere are two famous exceptions. With a rook pawn (a- or h-file), the defender can hide in the corner and stalemate saves him. With a bishop pawn (c- or f-file), the defender can go to the corner too, because taking the pawn would give stalemate. In those cases the attacking king must already be close to win.\n\nWith a centre or knight pawn, the queen always wins when it can start checking.', es: 'Una dama contra un peón en su 7ª fila apoyado por su rey suele ganar, pero conviene conocer el método. La dama da jaques y clavadas para obligar al rey rival a ponerse delante de su propio peón. Cada vez que eso ocurre, tu rey gana un tiempo libre para acercarse.\n\nHay dos excepciones famosas. Con un peón de torre (columna a o h), el defensor se esconde en la esquina y el ahogado lo salva. Con un peón de alfil (columna c o f), el defensor también puede ir a la esquina, porque capturar el peón daría ahogado. En esos casos el rey atacante ya tiene que estar cerca para ganar.\n\nCon un peón central o de caballo, la dama siempre gana si puede empezar a dar jaques.' },
+              { fen: '8/8/8/8/1Q6/8/3p4/3k2K1 w - - 0 1', marks: ['d1'], en: 'The checks have forced the black king in front of its own pawn, onto d1. The pawn cannot move now, so White\'s king gets a free move to come closer. Repeat until the king arrives.', es: 'Los jaques han obligado al rey negro a ponerse delante de su propio peón, en d1. Ahora el peón no puede avanzar, así que el rey blanco gana un tiempo para acercarse. Se repite hasta que llega el rey.' }
+            ],
+            practice: { c: 'e', t: 'basicMate' }
+          },
+          {
+            id: 'egBN', t: { en: 'Mate with bishop and knight', es: 'Mate con alfil y caballo' },
+            steps: [
+              { board: false, en: 'King, bishop and knight can force mate against a lone king, but it can take more than 30 moves and is the hardest of the basic mates. The key fact: mate is only possible in a corner of the same colour as the bishop\'s squares.\n\nThe method has two parts. First, drive the enemy king to the edge with all three pieces together, the king doing most of the work. Second, if the king runs to the wrong corner, push it along the edge toward the right one; the knight makes a "W" shaped path to take the escape squares while the bishop and king keep the box closed.\n\nYou may never need it in a game, but practising it teaches how the pieces cooperate.', es: 'Rey, alfil y caballo pueden forzar el mate a un rey solo, pero puede llevar más de 30 jugadas y es el más difícil de los mates básicos. Lo esencial: el mate solo es posible en una esquina del mismo color que las casillas del alfil.\n\nEl método tiene dos partes. Primero, llevar el rey rival al borde con las tres piezas juntas, haciendo el rey la mayor parte del trabajo. Segundo, si el rey huye a la esquina equivocada, empujarlo por el borde hacia la buena; el caballo hace un recorrido en forma de "W" para quitarle las casillas mientras el alfil y el rey mantienen la caja cerrada.\n\nQuizá nunca lo necesites en una partida, pero practicarlo enseña cómo colaboran las piezas.' },
+              { fen: '7k/4N3/6K1/4B3/8/8/8/8 b - - 0 1', marks: ['h8'], en: 'The final picture: mate in the dark corner with a dark-squared bishop. The knight covers g8, the king covers g7 and h7.', es: 'La imagen final: mate en la esquina oscura con el alfil de casillas oscuras. El caballo cubre g8 y el rey cubre g7 y h7.' }
+            ],
+            practice: { c: 'e', t: 'basicMate' }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'thinking', icon: '🧠', t: { en: 'How to Think in a Game', es: 'Cómo pensar en una partida' },
+    d: { en: 'Good habits that prevent blunders and help you find strong moves.', es: 'Buenos hábitos que evitan errores graves y ayudan a encontrar jugadas fuertes.' },
+    chapters: [
+      {
+        ch: { en: 'Before every move', es: 'Antes de cada jugada' },
+        lessons: [
+          { id: 'thThreat', t: { en: 'What does my opponent want?', es: '¿Qué quiere mi rival?' }, steps: [{ board: false, en: 'Most games between club players are not decided by deep plans but by one missed threat. The single most valuable habit is to ask, every time your opponent moves: "What does this move want to do?"\n\nLook at what the moved piece now attacks, which lines it opened, and whether it set up a check or a capture next move. Then look at what it stopped defending. Only after that should you think about your own ideas.\n\nThis takes a few seconds and saves countless games. The coach in this app shows the same idea when it explains which threat a best move stops.', es: 'La mayoría de las partidas entre aficionados no se deciden por planes profundos, sino por una amenaza que no se vio. El hábito más valioso es preguntarse, cada vez que el rival mueve: "¿Qué quiere hacer esta jugada?"\n\nMira qué ataca ahora la pieza que se movió, qué líneas abrió y si prepara un jaque o una captura para la jugada siguiente. Luego mira qué dejó de defender. Solo después piensa en tus propias ideas.\n\nEsto lleva unos segundos y salva muchísimas partidas. El entrenador de esta aplicación muestra la misma idea cuando explica qué amenaza frena la mejor jugada.' }, { term: 'threat' }], practice: { c: 't', t: 'threat' } },
+          { id: 'thCCT', t: { en: 'Checks, captures, threats', es: 'Jaques, capturas, amenazas' }, steps: [{ board: false, en: 'When you look for your own move, start with the most forcing moves: checks first, then captures, then moves that make a threat. Forcing moves limit your opponent\'s answers, so you can calculate them, and they are where tactics hide.\n\nGo through them even when they look silly. Many brilliant combinations begin with a check that "loses" a piece. If none of them works, you have lost nothing and you can calmly choose a quiet, improving move.\n\nDo the same for your opponent: what are their checks, captures and threats after your move? That is your blunder check.', es: 'Cuando busques tu jugada, empieza por las más forzadas: primero los jaques, luego las capturas y después las jugadas que crean una amenaza. Las jugadas forzadas limitan las respuestas del rival, así que puedes calcularlas, y es donde se esconde la táctica.\n\nRevísalas aunque parezcan absurdas. Muchas combinaciones brillantes empiezan con un jaque que "pierde" una pieza. Si ninguna funciona, no has perdido nada y puedes elegir con calma una jugada tranquila que mejore tu posición.\n\nHaz lo mismo para tu rival: ¿qué jaques, capturas y amenazas tiene tras tu jugada? Esa es tu comprobación contra errores graves.' }, { term: 'check' }], practice: { c: 't', l: 1 } },
+          { id: 'thBlunder', t: { en: 'The blunder check', es: 'La comprobación contra errores' }, steps: [{ board: false, en: 'Before you touch a piece, picture the board after your move and ask three questions. Is any of my pieces left undefended or attacked more times than it is defended? Can my opponent give a check that hurts? Did my move open a line toward my king or remove a defender?\n\nIt helps to look at the squares your moved piece used to protect. A knight that leaves f3, for example, no longer guards h2, d4 or e5.\n\nIn fast games, do at least the quick version: "Is everything still protected, and does my opponent have a strong check?"', es: 'Antes de tocar una pieza, imagina el tablero tras tu jugada y hazte tres preguntas. ¿Queda alguna pieza sin defensa, o atacada más veces de las que está defendida? ¿Puede mi rival dar un jaque que haga daño? ¿Mi jugada abre una línea hacia mi rey o quita un defensor?\n\nAyuda mirar las casillas que protegía la pieza que mueves. Un caballo que sale de f3, por ejemplo, deja de vigilar h2, d4 y e5.\n\nEn partidas rápidas, haz al menos la versión corta: "¿Sigue todo protegido y tiene mi rival algún jaque fuerte?"' }, { term: 'hangingPiece' }], practice: { c: 't', t: 'hangingPiece' } }
+        ]
+      },
+      {
+        ch: { en: 'When nothing is happening', es: 'Cuando no pasa nada' },
+        lessons: [
+          { id: 'thWorst', t: { en: 'Improve your worst piece', es: 'Mejora tu peor pieza' }, steps: [{ board: false, en: 'Often there is no tactic and no clear plan. Then a simple rule works very well: find your worst piece and improve it. A bishop blocked by its own pawns, a knight on the edge, or a rook with no open file are typical candidates.\n\nAsk where that piece would be ideal, and find a route to get there. Often it takes two or three moves, and your opponent may not be able to stop it.\n\nThe same question about your opponent helps too: which of their pieces is best? Can you trade it off, or take away its good squares?', es: 'A menudo no hay táctica ni un plan claro. Entonces funciona muy bien una regla sencilla: busca tu peor pieza y mejórala. Un alfil bloqueado por sus propios peones, un caballo en el borde o una torre sin columna abierta son candidatos típicos.\n\nPregúntate dónde estaría ideal esa pieza y busca un camino para llevarla allí. A menudo hacen falta dos o tres jugadas, y puede que tu rival no pueda impedirlo.\n\nLa misma pregunta sobre el rival también ayuda: ¿cuál es su mejor pieza? ¿Puedes cambiarla o quitarle sus buenas casillas?' }, { term: 'openFile' }], practice: { c: 't', t: 'threat' } },
+          { id: 'thPlan', t: { en: 'Making a plan', es: 'Hacer un plan' }, steps: [{ board: false, en: 'A plan comes from the position, not from wishes. Look at the differences between the two sides: who has more space, a better pawn structure, safer king, more active pieces, an open file or a weak square to use?\n\nThen pick a target and a way to reach it. For example: "Black\'s pawn on d5 is isolated, so I will put my pieces on it and trade the pieces that defend it." Or: "The kings castled on opposite sides, so I will push the pawns in front of the enemy king."\n\nA simple plan followed with every move is much stronger than random good-looking moves. Capablanca\'s book, in the bookshelf, is full of examples of this way of thinking.', es: 'Un plan nace de la posición, no de los deseos. Mira las diferencias entre los dos bandos: ¿quién tiene más espacio, mejor estructura de peones, el rey más seguro, piezas más activas, una columna abierta o una casilla débil que aprovechar?\n\nLuego elige un objetivo y una forma de alcanzarlo. Por ejemplo: "El peón negro de d5 está aislado, así que pondré mis piezas sobre él y cambiaré las que lo defienden". O: "Los reyes enrocaron en lados opuestos, así que avanzaré los peones delante del rey rival".\n\nUn plan sencillo seguido en cada jugada es mucho más fuerte que jugadas sueltas que parecen buenas. El libro de Capablanca, en la estantería, está lleno de ejemplos de esta forma de pensar.' }], read: { book: 'fundamentals', idx: 2 }, practice: { c: 'g' } },
+          { id: 'thAfter', t: { en: 'Learn from your games', es: 'Aprende de tus partidas' }, steps: [{ board: false, en: 'The fastest way to improve is to look at your own games, especially the losses. Right after a game, go through it and find the moment where things went wrong. Was it a missed threat, a tactic you did not see, or a plan that did not work?\n\nUse the analysis board in Challenge: set up the position and ask for the best move and the explanation. Then write down one lesson from the game, such as "I left my back rank weak".\n\nOver time you will see the same kind of mistake again and again. That tells you exactly what to study next: tactics, endgames or openings.', es: 'La forma más rápida de mejorar es revisar tus propias partidas, sobre todo las derrotas. Justo después de jugar, repásala y busca el momento en que las cosas se torcieron. ¿Fue una amenaza que no viste, una táctica que se te escapó o un plan que no funcionó?\n\nUsa el tablero de análisis de Desafíos: prepara la posición y pide la mejor jugada y la explicación. Luego apunta una lección de la partida, como "dejé débil mi última fila".\n\nCon el tiempo verás el mismo tipo de error una y otra vez. Eso te dice exactamente qué estudiar: táctica, finales o aperturas.' }], practice: { c: 't', l: 2 } }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'structures', icon: '🏗️', t: { en: 'Pawn Structures', es: 'Estructuras de peones' },
+    d: { en: 'Pawns decide the plans: learn the common structures and what to do in each.', es: 'Los peones deciden los planes: aprende las estructuras habituales y qué hacer en cada una.' },
+    chapters: [
+      {
+        ch: { en: 'Pawn weaknesses', es: 'Debilidades de peones' },
+        lessons: [
+          { id: 'psIsolated', t: { en: 'The isolated pawn', es: 'El peón aislado' }, steps: [{ board: false, en: 'An isolated pawn has no friendly pawns on the files next to it, so no pawn can ever defend it. The most common one is the isolated queen\'s pawn on d4 (or d5).\n\nIt has a good side: it gives space, open files for the rooks and strong squares in front of it (e5 and c5 for White) for the knights. With many pieces on the board, the side with the isolated pawn often attacks.\n\nIt also has a bad side: the square in front of it is a perfect outpost for the opponent, and in the endgame the pawn is easy to attack. So the side playing against it wants to block it, trade pieces and win it later.', es: 'Un peón aislado no tiene peones propios en las columnas vecinas, así que ningún peón podrá defenderlo nunca. El más habitual es el peón de dama aislado en d4 (o d5).\n\nTiene un lado bueno: da espacio, columnas abiertas para las torres y casillas fuertes delante de él (e5 y c5 para las blancas) para los caballos. Con muchas piezas en el tablero, el bando con el peón aislado suele atacar.\n\nTambién tiene un lado malo: la casilla de delante es un puesto avanzado perfecto para el rival, y en el final el peón es fácil de atacar. Por eso el bando que juega contra él quiere bloquearlo, cambiar piezas y ganarlo más tarde.' }, { fen: 'r1bq1rk1/pp2bppp/2n1pn2/8/3P4/2NB1N2/PP3PPP/R1BQ1RK1 w - - 0 1', marks: ['d4', 'd5', 'e5'], en: 'White has an isolated d-pawn: active pieces and the e5 square on one side, a blockade on d5 for Black on the other.', es: 'Las blancas tienen un peón d aislado: piezas activas y la casilla e5 por un lado, un bloqueo en d5 para las negras por el otro.' }], practice: { c: 'o', l: 2 } },
+          { id: 'psDoubled', t: { en: 'Doubled and backward pawns', es: 'Peones doblados y retrasados' }, steps: [{ board: false, en: 'Doubled pawns are two pawns of the same colour on one file, after a capture. They cannot protect each other and the front one blocks the back one. They are often a weakness, especially in the endgame, but they also open a file and can control important squares.\n\nA backward pawn is a pawn that has fallen behind its neighbours and cannot be supported by them. It is weak in two ways: the pawn itself can be attacked, and the square in front of it becomes a hole that the opponent can occupy with a piece.\n\nWhen you take with a pawn, think about the structure you leave behind. When your opponent has these weaknesses, aim your pieces at them.', es: 'Los peones doblados son dos peones del mismo color en una columna, tras una captura. No pueden protegerse entre sí y el de delante bloquea al de atrás. Suelen ser una debilidad, sobre todo en el final, pero también abren una columna y pueden controlar casillas importantes.\n\nUn peón retrasado es un peón que se ha quedado atrás respecto a sus vecinos y no puede ser apoyado por ellos. Es débil de dos maneras: el propio peón puede ser atacado, y la casilla de delante se convierte en un agujero que el rival puede ocupar con una pieza.\n\nCuando captures con un peón, piensa en la estructura que dejas. Cuando el rival tenga estas debilidades, apunta tus piezas hacia ellas.' }, { fen: '4k3/pp3ppp/2p5/8/8/2P5/P1P2PPP/4K3 w - - 0 1', marks: ['c2', 'c3'], en: 'White\'s doubled c-pawns: the pawn count is equal, but in an endgame Black\'s healthy queenside pawns can make a passed pawn and White\'s cannot.', es: 'Los peones c doblados de las blancas: hay los mismos peones, pero en un final los peones sanos de las negras en el flanco de dama pueden crear un peón pasado y los blancos no.' }], practice: { c: 'e', t: 'kingPawnEnding' } }
+        ]
+      },
+      {
+        ch: { en: 'Structures and plans', es: 'Estructuras y planes' },
+        lessons: [
+          { id: 'psChain', t: { en: 'Pawn chains: attack the base', es: 'Cadenas de peones: ataca la base' }, steps: [{ board: false, en: 'A pawn chain is a diagonal line of pawns, each protecting the next. The first pawn at the back, the "base", is the only one not defended by another pawn, so it is the natural target.\n\nIn the French Defence after 1.e4 e6 2.d4 d5 3.e5, White\'s chain d4-e5 points at the black kingside, and Black attacks its base with ...c5. White usually attacks on the side the chain points to, while the other side breaks with pawns against the base.\n\nA good rule: attack where your pawns point, and break the opponent\'s chain at its base.', es: 'Una cadena de peones es una línea diagonal de peones en la que cada uno protege al siguiente. El primero de atrás, la "base", es el único que no está defendido por otro peón, así que es el objetivo natural.\n\nEn la Defensa Francesa tras 1.e4 e6 2.d4 d5 3.e5, la cadena blanca d4-e5 apunta al flanco de rey negro, y las negras atacan su base con ...c5. Las blancas suelen atacar en el flanco hacia el que apunta la cadena, mientras el otro bando rompe con peones contra la base.\n\nUna buena regla: ataca hacia donde apuntan tus peones y rompe la cadena rival por su base.' }, { moves: 'e4 e6 d4 d5 e5 c5', arrows: [['c5', 'd4']], en: 'The French Advance: ...c5 attacks the base of White\'s chain on d4.', es: 'La Francesa del Avance: ...c5 ataca la base de la cadena blanca en d4.' }], read: { book: 'fundamentals', idx: 9 }, practice: { c: 'o', l: 1 } },
+          { id: 'psMinority', t: { en: 'The minority attack', es: 'El ataque de minorías' }, steps: [{ board: false, en: 'In the Queen\'s Gambit Exchange structure (White pawns on a2, b2, d4; Black pawns on a7, b7, c6, d5), White has two pawns against three on the queenside. Strangely, the "minority" attacks: White pushes b4 and b5 to trade on c6.\n\nAfter the exchange, Black is left with a weak pawn on c6 or a backward pawn on c6 with a hole on c5, or an isolated pawn on d5. White\'s pieces then attack that weakness.\n\nThis plan shows a deep idea: pawns are not only for promoting; they are tools to create weaknesses in the opponent\'s camp.', es: 'En la estructura del Gambito de Dama Variante del Cambio (peones blancos en a2, b2 y d4; negros en a7, b7, c6 y d5), las blancas tienen dos peones contra tres en el flanco de dama. Curiosamente, la "minoría" ataca: las blancas avanzan b4 y b5 para cambiar en c6.\n\nTras el cambio, a las negras les queda un peón débil en c6, o retrasado en c6 con un agujero en c5, o un peón aislado en d5. Entonces las piezas blancas atacan esa debilidad.\n\nEste plan enseña una idea profunda: los peones no solo sirven para coronar; son herramientas para crear debilidades en el campo rival.' }, { moves: 'd4 d5 c4 e6 Nc3 Nf6 Bg5 Nbd7 cxd5 exd5', marks: ['b2', 'a2', 'a7', 'b7', 'c7'], en: 'The Carlsbad structure: White\'s plan is b4-b5 against Black\'s queenside pawns.', es: 'La estructura Carlsbad: el plan blanco es b4-b5 contra los peones del flanco de dama negro.' }], read: { book: 'fundamentals', idx: 14 }, practice: { c: 'o', l: 2 } },
+          { id: 'psBishop', t: { en: 'Good and bad bishops', es: 'Alfiles buenos y malos' }, steps: [{ board: false, en: 'A bishop is "bad" when many of its own pawns stand on squares of its colour: it hits its own pawns and has little scope. A "good" bishop moves on the other colour, where the pawns do not get in the way.\n\nThis gives a practical rule: put your pawns on the opposite colour to your bishop, and fix your opponent\'s pawns on the colour of their bishop. In the French Defence, for example, Black\'s light-squared bishop on c8 is often bad, blocked by the pawns on e6 and d5.\n\nA bad bishop can still be useful as a defender, and you can make it better by bringing it outside the pawn chain or by trading it.', es: 'Un alfil es "malo" cuando muchos de sus propios peones están en casillas de su color: choca con sus peones y tiene poco alcance. Un alfil "bueno" se mueve en el otro color, donde los peones no estorban.\n\nDe ahí sale una regla práctica: coloca tus peones en el color contrario al de tu alfil, y fija los peones rivales en el color de su alfil. En la Defensa Francesa, por ejemplo, el alfil negro de casillas claras de c8 suele ser malo, bloqueado por los peones de e6 y d5.\n\nUn alfil malo aún puede ser útil como defensor, y puedes mejorarlo sacándolo fuera de la cadena de peones o cambiándolo.' }, { moves: 'e4 e6 d4 d5 e5', marks: ['c8', 'e6', 'd5'], en: 'Black\'s bishop on c8 is hemmed in by the pawns on e6 and d5.', es: 'El alfil negro de c8 está encerrado por los peones de e6 y d5.' }], practice: { c: 'o', l: 1 } }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'repertoire', icon: '📖', t: { en: 'Your Opening Repertoire', es: 'Tu repertorio de aperturas' },
+    d: { en: 'One simple, solid set of openings with White and Black: the ideas and plans, not long lines to memorize.', es: 'Un repertorio sencillo y sólido con blancas y negras: ideas y planes, no largas líneas que memorizar.' },
+    chapters: [
+      {
+        ch: { en: 'With White: 1.e4', es: 'Con blancas: 1.e4' },
+        lessons: [
+          { id: 'rpItalian', t: { en: 'The Italian Game', es: 'La Apertura Italiana' }, steps: [{ board: false, en: 'Against 1...e5, play the Italian Game: 2.Nf3 Nc6 3.Bc4. Your bishop aims at f7, the weakest point in Black\'s camp, and your pieces develop naturally.\n\nA calm and modern set-up is c3, d3, castling, then Re1 and a knight route Nbd2-f1-g3. The pawn on c3 prepares d4 when the moment is right, and gives the bishop a safe retreat on c2 or b3.\n\nWatch for ...Ng4 or ...Bxf2+ tricks if you get careless, and remember Scholar\'s mate ideas only work against careless opponents: develop first.', es: 'Contra 1...e5, juega la Apertura Italiana: 2.Cf3 Cc6 3.Ac4. Tu alfil apunta a f7, el punto más débil del campo negro, y tus piezas se desarrollan de forma natural.\n\nUn esquema tranquilo y moderno es c3, d3, enroque, luego Te1 y la ruta del caballo Cbd2-f1-g3. El peón de c3 prepara d4 en el momento oportuno y da al alfil una retirada segura en c2 o b3.\n\nVigila los trucos ...Cg4 o ...Axf2+ si te descuidas, y recuerda que las ideas del mate del pastor solo funcionan contra rivales descuidados: desarrolla primero.' }, { moves: 'e4 e5 Nf3 Nc6 Bc4 Bc5 c3 Nf6 d3 d6 O-O O-O', en: 'A typical Italian position: both sides develop calmly, and White prepares d4 or a kingside attack.', es: 'Una posición italiana típica: ambos bandos se desarrollan con calma y las blancas preparan d4 o un ataque en el flanco de rey.' }, { term: 'giuocoPiano' }], guess: 'evergreen', practice: { c: 'o', l: 0 } },
+          { id: 'rpAlapin', t: { en: 'Against the Sicilian: 2.c3', es: 'Contra la Siciliana: 2.c3' }, steps: [{ board: false, en: 'Against 1...c5, the Alapin Variation 2.c3 is simple and sound. White prepares d4 to build a full pawn centre, and avoids the huge amount of theory of the open Sicilian.\n\nThe two main answers are 2...d5 (3.exd5 Qxd5 4.d4, and the black queen will be chased a little) and 2...Nf6 (3.e5 Nd5 4.d4, with space for White).\n\nThe plans are classical: develop the knights and bishops, castle, and use the centre. It is a great choice while you learn the typical middlegames.', es: 'Contra 1...c5, la Variante Alapin 2.c3 es sencilla y sólida. Las blancas preparan d4 para formar un centro completo de peones y evitan la enorme teoría de la Siciliana abierta.\n\nLas dos respuestas principales son 2...d5 (3.exd5 Dxd5 4.d4, y la dama negra será perseguida un poco) y 2...Cf6 (3.e5 Cd5 4.d4, con espacio para las blancas).\n\nLos planes son clásicos: desarrollar caballos y alfiles, enrocar y aprovechar el centro. Es una gran elección mientras aprendes los medios juegos típicos.' }, { moves: 'e4 c5 c3 d5 exd5 Qxd5 d4', en: 'The Alapin with 2...d5: White gets d4 in, and the black queen in the centre can be harassed with Nf3, Be2 and Na3 or Nc3.', es: 'La Alapin con 2...d5: las blancas consiguen d4, y la dama negra en el centro puede ser hostigada con Cf3, Ae2 y Ca3 o Cc3.' }, { term: 'alapin' }], practice: { c: 'o', l: 1 } },
+          { id: 'rpAdvance', t: { en: 'Against the French and Caro-Kann: the Advance', es: 'Contra la Francesa y la Caro-Kann: el Avance' }, steps: [{ board: false, en: 'Against both 1...e6 (French) and 1...c6 (Caro-Kann), Black wants to play ...d5. A simple answer is to push e4-e5: the Advance Variation. You gain space on the kingside and your pawn chain d4-e5 points at the black king.\n\nBlack will attack the base of the chain with ...c5 and pieces on d4. Keep d4 well protected with c3 and Nf3, develop, and use your extra space for a kingside attack.\n\nOne warning from the Caro-Kann: in other lines, an early Qe2 sets the famous Nd6# trap, explained in the Opening Traps book.', es: 'Tanto contra 1...e6 (Francesa) como contra 1...c6 (Caro-Kann), las negras quieren jugar ...d5. Una respuesta sencilla es avanzar e4-e5: la Variante del Avance. Ganas espacio en el flanco de rey y tu cadena d4-e5 apunta al rey negro.\n\nLas negras atacarán la base de la cadena con ...c5 y con piezas sobre d4. Protege bien d4 con c3 y Cf3, desarrolla, y usa tu espacio extra para atacar en el flanco de rey.\n\nUn aviso de la Caro-Kann: en otras líneas, una De2 temprana tiende la famosa trampa Cd6#, explicada en el libro Trampas de apertura.' }, { moves: 'e4 e6 d4 d5 e5 c5 c3 Nc6 Nf3', en: 'French Advance: White keeps the centre with c3 and Nf3.', es: 'Francesa del Avance: las blancas mantienen el centro con c3 y Cf3.' }, { moves: 'e4 c6 d4 d5 e5 Bf5', en: 'Caro-Kann Advance: Black develops the bishop outside the chain first, then plays ...e6 and ...c5.', es: 'Caro-Kann del Avance: las negras sacan primero el alfil fuera de la cadena y luego juegan ...e6 y ...c5.' }], read: { book: 'fundamentals', idx: 9 }, practice: { c: 'o', l: 1 } }
+        ]
+      },
+      {
+        ch: { en: 'With Black', es: 'Con negras' },
+        lessons: [
+          { id: 'rpE5', t: { en: 'Against 1.e4: play 1...e5', es: 'Contra 1.e4: juega 1...e5' }, steps: [{ board: false, en: 'Answer 1.e4 with 1...e5: it fights for the centre at once and opens lines for your bishop and queen. After 2.Nf3 Nc6 you defend e5 with a developing move.\n\nAgainst 3.Bc4, play 3...Bc5 or 3...Nf6, with the same ideas as the Italian Game for White. Against 3.Bb5 (the Ruy López), 3...a6 asks the bishop a question; after 4.Ba4 Nf6 5.O-O Be7, Black develops solidly.\n\nKnow the traps for both sides: the Noah\'s Ark Trap and Légal\'s trap are in the Opening Traps book, and Capablanca\'s Ruy López games are in his book.', es: 'Responde a 1.e4 con 1...e5: lucha por el centro de inmediato y abre líneas para tu alfil y tu dama. Tras 2.Cf3 Cc6 defiendes e5 con una jugada de desarrollo.\n\nContra 3.Ac4, juega 3...Ac5 o 3...Cf6, con las mismas ideas que la Italiana con blancas. Contra 3.Ab5 (la Ruy López), 3...a6 le hace una pregunta al alfil; tras 4.Aa4 Cf6 5.O-O Ae7, las negras se desarrollan con solidez.\n\nConoce las trampas de ambos bandos: la trampa del Arca de Noé y la de Légal están en el libro Trampas de apertura, y las partidas de Capablanca con la Ruy López están en su libro.' }, { moves: 'e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7', en: 'The Ruy López with a solid set-up for Black: ...a6, ...Nf6, ...Be7 and castling next.', es: 'La Ruy López con un esquema sólido para las negras: ...a6, ...Cf6, ...Ae7 y después el enroque.' }, { term: 'ruyLopez' }], read: { book: 'fundamentals', idx: 10 }, practice: { c: 'o', l: 0 } },
+          { id: 'rpQGD', t: { en: 'Against 1.d4: the Queen\'s Gambit Declined', es: 'Contra 1.d4: el Gambito de Dama Rehusado' }, steps: [{ board: false, en: 'Against 1.d4, play 1...d5, and against 2.c4 decline the gambit with 2...e6: the Queen\'s Gambit Declined. Your centre stays solid and your pieces develop behind it with ...Nf6, ...Be7, ...O-O and ...Nbd7.\n\nThe one problem piece is the light-squared bishop on c8, hemmed in by the pawn on e6. The classic solutions are ...dxc4 followed by ...c5, or ...b6 and ...Bb7. Capablanca often freed his game with timely exchanges, as you can see in his games in the bookshelf.\n\nRemember the Elephant Trap: if White grabs your d5 pawn with a pinned-looking knight, it can backfire.', es: 'Contra 1.d4, juega 1...d5, y contra 2.c4 rehúsa el gambito con 2...e6: el Gambito de Dama Rehusado. Tu centro se mantiene sólido y tus piezas se desarrollan detrás con ...Cf6, ...Ae7, ...O-O y ...Cbd7.\n\nLa pieza problemática es el alfil de casillas claras de c8, encerrado por el peón de e6. Las soluciones clásicas son ...dxc4 seguido de ...c5, o ...b6 y ...Ab7. Capablanca a menudo liberaba su juego con cambios oportunos, como puedes ver en sus partidas de la estantería.\n\nRecuerda la trampa del elefante: si las blancas se comen tu peón de d5 con un caballo que parece clavado, puede volverse en su contra.' }, { moves: 'd4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 e3 O-O Nf3 Nbd7', en: 'The classical QGD set-up for Black: solid centre, quick castling.', es: 'El esquema clásico del Gambito de Dama Rehusado con negras: centro sólido y enroque rápido.' }, { term: 'qgd' }], read: { book: 'fundamentals', idx: 6 }, practice: { c: 'o', l: 1 } }
+        ]
+      }
+    ]
+  }
+);

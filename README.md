@@ -45,6 +45,15 @@ Just open `index.html`.
 - **More books** in Lessons: *Opening Traps* (12 famous traps, from Fool's Mate to the Lasker Trap,
   most with a *Your turn* punishment) and *Masterpieces* (the Immortal Game, the Evergreen Game,
   Lasker–Thomas and Byrne–Fischer explained move by move, with *Guess the master's move*).
+- **Classic book reader**: Capablanca's *Chess Fundamentals* (1921, public domain), complete and in its
+  original English words, with its 150 diagrams and a guide to the old descriptive notation. Every
+  chapter ends with *Hands-on* practice (the matching lessons), and 12 of the book's 14 annotated games
+  can be played as *Guess Capablanca's moves*. Imported with `tools/import-fundamentals.py` and
+  `tools/convert-descriptive.js`; the book loads only when opened and can be saved for offline reading.
+- **Five more lesson books**: *Tactics Patterns* (Greek gift, Arabian and Anastasia's mates, windmill,
+  clearance, desperado...), *Endgame Essentials* (key squares, rook pawns, rooks behind passed pawns,
+  queen against pawn, bishop and knight mate), *How to Think in a Game*, *Pawn Structures* and
+  *Your Opening Repertoire*, each with longer reading pages and hands-on practice.
 - **Daily puzzle** (main menu): one puzzle a day matched to your puzzle rating, with a 🔥 streak of
   days solved in a row.
 - **Ratings**: an estimated game rating (from fair games against the robot in Alone mode; the robot
@@ -114,6 +123,7 @@ js/facts.js      "Did you know?" facts
 js/coach.js      move ratings and best-move explanations
 js/sound.js      board sounds (synthesized, no audio files)
 js/app.js        board, controls, game flow, challenge and analysis board
+books/fundamentals/  Capablanca's book: text.json (chapters), games.json (converted games), img/ (diagrams)
 data/lessons.js  the Lessons course (loaded when Lessons opens; cached for offline use)
 data/challenges.js  the puzzles (loaded only when Challenge opens; cached for offline use)
 tools/           Node.js scripts that generate and verify the puzzles (not used by the app)

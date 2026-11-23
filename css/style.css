@@ -669,3 +669,21 @@ details.book > .lesson-items:last-child { margin-bottom: 12px; }
 .book-icon { font-size: 1.8rem; }
 .book-t { display: flex; flex-direction: column; gap: 2px; }
 .book-t small { color: var(--muted); font-size: .82rem; }
+
+/* ---------------- Book reader ---------------- */
+.reader-text { line-height: 1.65; font-size: 1.02rem; }
+.reader-text p { margin: 10px 0; }
+.reader-text .cenhead { text-align: center; font-weight: 700; margin: 18px 0 8px; }
+.reader-text .sc { font-variant: small-caps; }
+.reader-text h3 { margin: 24px 0 8px; }
+.reader-text figure { margin: 14px auto; text-align: center; }
+.reader-text figure img { width: min(300px, 100%); height: auto; border-radius: 4px; background: #fff; }
+:root[data-theme="dark"] .reader-text figure img { filter: invert(.88) hue-rotate(180deg); }
+.reader-text table { margin: 8px auto; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.reader-text td { padding: 1px 14px 1px 0; white-space: nowrap; }
+.reader-text sup { font-size: .75em; }
+.notation-help { margin-bottom: 12px; }
+.notation-help .notation-text { padding: 0 14px 12px; font-size: .92rem; line-height: 1.5; }
+.hands-on { margin: 26px 0 14px; padding: 12px; border: 2px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+.hands-on h3 { margin: 0 0 10px; }
+.credit { margin-top: 18px; }
