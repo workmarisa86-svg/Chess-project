@@ -3,17 +3,39 @@
  * notation (P - K 4, Kt x B ch) to moves the app can play, by matching each
  * description against the legal moves. A game is kept only if every move
  * matches exactly one legal move. Writes books/fundamentals/games.json.
- * Usage: node tools/convert-descriptive.js
+ * Usage: node tools/convert-descriptive.js [book]
+ *   fundamentals (default): the games of Part II, one per chapter
+ *   bluebook: every "Game" inside each chapter, written in the older long style
+ *             ("K. Kt. to K. B's 3d.", "Q. takes P.", "Castles on K's side")
  */
 'use strict';
 const fs = require('fs');
 const L = require('./challenge-lib.js');
 const { Core } = L;
-const book = JSON.parse(fs.readFileSync('books/fundamentals/text.json', 'utf8'));
+const BOOK = process.argv[2] || 'fundamentals';
+const book = JSON.parse(fs.readFileSync(`books/${BOOK}/text.json`, 'utf8'));
 
 const FILE = { QR: 0, QKt: 1, QB: 2, Q: 3, K: 4, KB: 5, KKt: 6, KR: 7 };
 const PIECE = { P: 1, Kt: 2, B: 3, R: 4, Q: 5, K: 6 };
-const norm = s => s.replace(/&nbsp;/g, ' ').replace(/&times;|×|�/g, 'x').replace(/<[^>]+>/g, '').replace(/[!?]+/g, '').replace(/\s+/g, ' ').trim();
+// "K. Kt. to K. B's 3d." -> "K Kt - K B 3"; "Q. P. takes B." -> "Q P x B"; "Castles on Q's side" -> "O-O-O"
+function longStyle(t) {
+  t = t.replace(/\[[A-Z]\]/g, '').replace(/\(ch\.?\)|\bch\./gi, '').replace(/[.,;:!?]+\s*$/, '').trim();
+  if (/^castles/i.test(t)) return /Q(ueen)?'?s side/i.test(t) ? 'O-O-O' : 'O-O';
+  t = t.replace(/\b(Kt|K|Q|R|B|P)\.?(?=\s|'|$)/g, '$1');
+  t = t.replace(/\s*en passant/i, '').replace(/\s+checks?\b/i, '');
+  t = t.replace(/'s/g, '').replace(/\b(\d)(st|d|nd|rd|th)\b/g, '$1').replace(/\b(sq|square)\b\.?/g, '1');
+  // "his"/"her" name the moving piece's own side: "K Kt to his 5" is KKt5, "Q to her Kt 3" is QKt3
+  const mv = /^(.*?)\s+(to|takes)\s+(his|her)\s+(.*)$/.exec(t);
+  if (mv) {
+    const mover = mv[1].trim(), side = mv[3] === 'her' ? 'Q' : 'K';
+    const own = /^[QK]\s/.test(mover) || mover === 'K' || mover === 'Q' ? mover : side + ' ' + mover;
+    t = `${mover} ${mv[2]} ${/^\d/.test(mv[4]) ? own.replace(/\s*P$/, '') + ' ' + mv[4] : side + ' ' + mv[4]}`;
+  }
+  t = t.replace(/\s+to\s+/, ' - ').replace(/\s+takes\s+/, ' x ');
+  t = t.replace(/\bQueens?\b/g, 'Q').replace(/\(?\s*(?:and )?(?:dis\.?|discovers?)\s*ch(eck)?\.?\)?/gi, '');
+  return t.replace(/\./g, '').replace(/\s+/g, ' ').trim();
+}
+const norm = s => s.replace(/<sup>.*?<\/sup>/g, '').replace(/&nbsp;/g, ' ').replace(/&times;|×|�/g, 'x').replace(/<[^>]+>/g, '').replace(/[!?]+/g, '').replace(/\s+/g, ' ').trim();
 
 // Squares a descriptor like "Q B 4", "B 4", "K 3" can mean, for the side to move.
 function squares(desc, black) {
@@ -101,9 +123,27 @@ function pick(g, c) {
   return { move: res[0].move, guessed: true }; // analyze() returns the best first
 }
 
+// Each game: its title, the chapter it is in, and its move-table rows.
+const sources = [];
+if (BOOK === 'fundamentals') {
+  book.chapters.forEach((ch, idx) => {
+    if (ch.part !== 'PART II') return;
+    const players = /White:\s*([^<]*?)\s+Black:\s*([^<]*?)\.?\s*<\/p>/.exec(ch.html.replace(/&nbsp;/g, ' '));
+    sources.push({ idx, title: ch.title, html: ch.html, white: players ? players[1].trim() : '', black: players ? players[2].trim() : '' });
+  });
+} else {
+  book.chapters.forEach((ch, idx) => {
+    const parts = ch.html.split(/(?=<p[^>]*>\s*<span[^>]*>Game<\/span>)/);
+    for (const part of parts.slice(1)) {
+      const head = /<p[^>]*>\s*<span[^>]*>Game<\/span>\s*([^<]*)/.exec(part);
+      const title = ('Game ' + (head ? head[1] : '')).replace(/&mdash;/g, ' — ').replace(/\s+/g, ' ').trim();
+      sources.push({ idx, title, html: part.split(/<h2/)[0], white: '', black: '' });
+    }
+  });
+}
 const out = [];
-for (const ch of book.chapters.filter(c => c.part === 'PART II')) {
-  // every move table row: "N. white | black" ("........" when the move is not shown)
+for (const src of sources) {
+  const ch = src;
   const rows = [...ch.html.matchAll(/<tr>(.*?)<\/tr>/g)].map(r => [...r[1].matchAll(/<td[^>]*>(.*?)<\/td>/g)].map(c => norm(c[1])));
   const g = new Core.Chess();
   const sans = [];
@@ -112,13 +152,17 @@ for (const ch of book.chapters.filter(c => c.part === 'PART II')) {
     const mm = /^(\d+)\.\s*(.*)$/.exec(r[0] || '');
     if (!mm) continue;
     const num = +mm[1];
-    const plies = [[mm[2], 0], [r[1] || '', 1]];
-    for (const [txt, side] of plies) {
+    const blackTxt = (r[1] || '').replace(/^\d+\.\s*/, '');
+    const plies = [[mm[2], 0], [blackTxt, 1]];
+    for (let [txt, side] of plies) {
+      if (BOOK !== 'fundamentals') txt = longStyle(txt);
       if (!txt || /^\.+$/.test(txt.replace(/\s/g, ''))) continue;
-      if (/resigns|drawn|wins/i.test(txt)) continue;
+      if (/resigns|drawn|wins|mate$/i.test(txt) && !/ - | x |O-O/.test(txt)) continue;
       const expectPly = (num - 1) * 2 + side;
       if (expectPly !== sans.length) { ok = false; why = `numbering at ${num}${side ? '...' : '.'} (${sans.length})`; break; }
-      const c = candidates(g, txt);
+      let c = candidates(g, txt);
+      // "Q B x B": qualifiers name where a piece started, not where it is; if nothing fits, drop them
+      if (!c.length) c = candidates(g, txt.replace(/(^|[x-]\s?)(?:[QK]\s)(?=(?:Kt|B|R)\b)/g, '$1'));
       const p = pick(g, c);
       if (!p) { ok = false; why = `${num}${side ? '...' : '.'} "${txt}" -> ${c.length} candidates`; break; }
       if (p.guessed) guessed++;
@@ -127,9 +171,8 @@ for (const ch of book.chapters.filter(c => c.part === 'PART II')) {
     }
     if (!ok) break;
   }
-  const players = /White:\s*([^<]*?)\s+Black:\s*([^<]*?)\.?\s*<\/p>/.exec(ch.html.replace(/&nbsp;/g, ' '));
-  console.log((ok ? 'OK  ' : 'FAIL'), ch.title, sans.length, 'plies', ok ? `(${guessed} ties settled by the engine)` : why);
-  if (ok && sans.length > 10) out.push({ title: ch.title, white: players ? players[1].trim() : '', black: players ? players[2].trim() : '', moves: sans.join(' ') });
+  if (process.env.VERBOSE || BOOK === 'fundamentals') console.log((ok ? 'OK  ' : 'FAIL'), ch.title.slice(0, 60), sans.length, 'plies', ok ? `(${guessed} ties settled by the engine)` : why);
+  if (ok && sans.length > 10) out.push({ idx: ch.idx, title: ch.title, white: ch.white, black: ch.black, moves: sans.join(' ') });
 }
-fs.writeFileSync('books/fundamentals/games.json', JSON.stringify(out));
-console.log(out.length, 'games converted');
+console.log(out.length, 'of', sources.length, 'games converted');
+fs.writeFileSync(`books/${BOOK}/games.json`, JSON.stringify(out));

@@ -687,3 +687,9 @@ details.book > .lesson-items:last-child { margin-bottom: 12px; }
 .hands-on { margin: 26px 0 14px; padding: 12px; border: 2px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
 .hands-on h3 { margin: 0 0 10px; }
 .credit { margin-top: 18px; }
+.reader-text .boardno, .reader-text .boardcolor, .reader-text .center, .reader-text .sectionhead { text-align: center; }
+.reader-text .boardcolor { font-size: .8rem; letter-spacing: .1em; margin: 2px 0; color: var(--muted); }
+.reader-text .sectionhead { font-weight: 700; margin-top: 18px; }
+.reader-text .chapcon { font-size: .9rem; color: var(--muted); text-align: center; }
+.reader-text figure img[src$=".gif"] { width: min(304px, 100%); image-rendering: auto; }
+.reader-text td img { width: 32px; height: 32px; }

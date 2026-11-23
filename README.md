@@ -50,6 +50,10 @@ Just open `index.html`.
   chapter ends with *Hands-on* practice (the matching lessons), and 12 of the book's 14 annotated games
   can be played as *Guess Capablanca's moves*. Imported with `tools/import-fundamentals.py` and
   `tools/convert-descriptive.js`; the book loads only when opened and can be saved for offline reading.
+- **More classic books**, complete and in their original words: *The Blue Book of Chess* (1910 edition,
+  after Staunton: rudiments, all the main openings of the time and endings, with 30 of its 81 games
+  playable as *Guess the winner's moves*) and F. M. Edge's *The Exploits and Triumphs of Paul Morphy*
+  (1859). Imported with `tools/import-book.py`; games converted with `tools/convert-descriptive.js bluebook`.
 - **Five more lesson books**: *Tactics Patterns* (Greek gift, Arabian and Anastasia's mates, windmill,
   clearance, desperado...), *Endgame Essentials* (key squares, rook pawns, rooks behind passed pawns,
   queen against pawn, bishop and knight mate), *How to Think in a Game*, *Pawn Structures* and
@@ -123,6 +127,7 @@ js/facts.js      "Did you know?" facts
 js/coach.js      move ratings and best-move explanations
 js/sound.js      board sounds (synthesized, no audio files)
 js/app.js        board, controls, game flow, challenge and analysis board
+books/bluebook/, books/morphy/  the other classic books (same layout)
 books/fundamentals/  Capablanca's book: text.json (chapters), games.json (converted games), img/ (diagrams)
 data/lessons.js  the Lessons course (loaded when Lessons opens; cached for offline use)
 data/challenges.js  the puzzles (loaded only when Challenge opens; cached for offline use)

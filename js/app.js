@@ -2377,8 +2377,11 @@
         .map(l => `<button type="button" class="lesson-item" data-lesson="${l.id}"><span>📚 ${esc(l.t[L])}</span><span>→</span></button>`).join('');
     }
     if (meta.game) {
-      hands += `<button type="button" class="btn primary big" data-rd="guess">🏛️ ${esc(tf('guessPlayer', { name: 'Capablanca' }))}</button>`;
+      hands += `<button type="button" class="btn primary big" data-rd="guess" data-g="-1">🏛️ ${esc(tf('guessPlayer', { name: 'Capablanca' }))}</button>`;
     }
+    (meta.games || []).forEach((g, gi) => {
+      hands += `<button type="button" class="lesson-item" data-rd="guess" data-g="${gi}"><span>🏛️ ${esc(t('guessGame'))}: ${esc(g.title)}</span><span>→</span></button>`;
+    });
     const isLast = i === bk.chapters.length - 1;
     body.innerHTML = `
       <details class="panel notation-help"><summary>${esc(t('notationHelpTitle'))}</summary><div class="notation-text">${esc(t('notationHelp'))}</div></details>
@@ -2390,7 +2393,7 @@
         <button type="button" class="btn primary" data-rd="next" ${isLast ? 'disabled' : ''}>${esc(t('nextChapter'))} ▶</button>
       </div>
       <button type="button" class="btn small" data-rd="offline">⬇ ${esc(t('saveBookOffline'))}</button>
-      <p class="hint-text small credit">${esc(t('bookCredit'))}</p>`;
+      <p class="hint-text small credit">${esc(bk.credit ? bk.credit[L] : t('bookCredit'))}</p>`;
   }
   // Fetch every diagram once: the service worker keeps what it fetched, so the whole book reads offline.
   function saveBookOffline(bk) {
@@ -2409,7 +2412,10 @@
     if (b.dataset.rd === 'offline') { saveBookOffline(bk); return; }
     if (b.dataset.rd === 'prev') openReader(bk.id, readerView.idx - 1);
     else if (b.dataset.rd === 'next') openReader(bk.id, readerView.idx + 1);
-    else if (b.dataset.rd === 'guess' && meta.game) {
+    else if (b.dataset.rd === 'guess' && +b.dataset.g >= 0) {
+      const g = meta.games[+b.dataset.g];
+      startGuess({ id: bk.id + '-' + readerView.idx + '-' + b.dataset.g, n: { en: g.title, es: g.title }, moves: g.moves, from: g.side === 'w' ? 0 : 1, a: null });
+    } else if (b.dataset.rd === 'guess' && meta.game) {
       const g = meta.game;
       startGuess({ id: bk.id + '-' + readerView.idx, n: { en: `${g.white} – ${g.black} (${meta.t})`, es: `${g.white} – ${g.black} (${meta.t})` },
         moves: g.moves, from: g.side === 'w' ? 0 : 1, a: null });
