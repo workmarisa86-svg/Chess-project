@@ -42,6 +42,9 @@ Just open `index.html`.
   and random order without repeats until everything is solved. Every category has puzzles at every
   level: when you solve the last puzzle of a level, it says *Level complete* and offers *Next level*
   (the Challenge screen also ticks finished levels ✓ and shows a *Next level* button).
+- **More books** in Lessons: *Opening Traps* (12 famous traps, from Fool's Mate to the Lasker Trap,
+  most with a *Your turn* punishment) and *Masterpieces* (the Immortal Game, the Evergreen Game,
+  Lasker–Thomas and Byrne–Fischer explained move by move, with *Guess the master's move*).
 - **Daily puzzle** (main menu): one puzzle a day matched to your puzzle rating, with a 🔥 streak of
   days solved in a row.
 - **Ratings**: an estimated game rating (from fair games against the robot in Alone mode; the robot

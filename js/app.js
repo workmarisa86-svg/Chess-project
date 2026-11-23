@@ -2067,7 +2067,8 @@
     }
     return lessonsPromise;
   }
-  const allLessons = () => (window.LESSONS || []).flatMap((ch, ci) => ch.lessons.map(l => Object.assign({ ci }, l)));
+  const books = () => window.BOOKS || [{ id: 'course', chapters: window.LESSONS || [] }];
+  const allLessons = () => books().flatMap(b => b.chapters.flatMap(ch => ch.lessons));
   const lessonProgress = () => { const p = store.get('lessonProgress', {}); return p && typeof p === 'object' ? p : {}; };
   function markLesson(id, key) {
     const p = lessonProgress();
@@ -2087,15 +2088,23 @@
     const L = state.lang, prog = lessonProgress(), all = allLessons();
     const read = all.filter(l => prog[l.id] && prog[l.id].r).length;
     let html = `<p class="ch-progress-text">${esc(tf('lessonsRead', { r: read, n: all.length }))}</p>`;
-    window.LESSONS.forEach((ch, ci) => {
-      html += `<h3 class="lesson-ch">${esc(tf('chapterN', { n: ci + 1 }))} · ${esc(ch.ch[L])}</h3><div class="lesson-items">`;
-      for (const l of ch.lessons) {
-        const p = prog[l.id] || {};
-        html += `<button type="button" class="lesson-item${p.r ? ' read' : ''}" data-lesson="${l.id}"><span>${esc(l.t[L])}</span>` +
-          `<span class="lesson-marks">${p.r ? `<span title="${esc(t('lessonRead'))}">✓</span>` : ''}${p.p ? `<span title="${esc(t('lessonPracticed'))}">🎯</span>` : ''}</span></button>`;
-      }
-      html += '</div>';
-    });
+    // The shelf: each book opens to its chapters (the book you were reading stays open).
+    const openBook = books().find(bk => bk.chapters.some(ch => ch.lessons.some(l => l.id === lessonView.id))) || books()[0];
+    for (const bk of books()) {
+      const ls = bk.chapters.flatMap(ch => ch.lessons), done = ls.filter(l => prog[l.id] && prog[l.id].r).length;
+      html += `<details class="book"${bk === openBook ? ' open' : ''}><summary><span class="book-icon" aria-hidden="true">${bk.icon || '📘'}</span>` +
+        `<span class="book-t"><b>${esc(bk.t ? bk.t[L] : t('lessons'))}</b><small>${esc(bk.d ? bk.d[L] + ' · ' : '')}${esc(tf('lessonsRead', { r: done, n: ls.length }))}</small></span></summary>`;
+      bk.chapters.forEach((ch, ci) => {
+        html += `<h3 class="lesson-ch">${esc(tf('chapterN', { n: ci + 1 }))} · ${esc(ch.ch[L])}</h3><div class="lesson-items">`;
+        for (const l of ch.lessons) {
+          const p = prog[l.id] || {};
+          html += `<button type="button" class="lesson-item${p.r ? ' read' : ''}" data-lesson="${l.id}"><span>${esc(l.t[L])}</span>` +
+            `<span class="lesson-marks">${p.r ? `<span title="${esc(t('lessonRead'))}">✓</span>` : ''}${p.p ? `<span title="${esc(t('lessonPracticed'))}">🎯</span>` : ''}</span></button>`;
+        }
+        html += '</div>';
+      });
+      html += '</details>';
+    }
     box.innerHTML = html;
   }
   $('lessonList').addEventListener('click', e => {
@@ -2148,6 +2157,7 @@
       </div>
       ${last ? `<div class="lesson-end">
         ${doIt ? `<button type="button" class="btn primary big" data-lnav="task">🎯 ${esc(t('yourTurn'))}</button>` : ''}
+        ${l.guess ? `<button type="button" class="btn${doIt ? '' : ' primary'} big" data-lnav="guess">🏛️ ${esc(t('guessTitle'))}</button>` : ''}
         ${next ? `<button type="button" class="btn big" data-lnav="nextLesson">${esc(t('nextLesson'))}: ${esc(next.t[L])} →</button>` : ''}
       </div>` : ''}`;
   }
@@ -2160,6 +2170,7 @@
       case 'next': lessonView.step++; renderLesson(); break;
       case 'nextLesson': openLesson(all[idx + 1].id, 0); break;
       case 'task': lessonTask(l, true); break;
+      case 'guess': { const gm = (window.GUESS_GAMES || []).find(x => x.id === l.guess); if (gm) startGuess(gm); break; }
     }
   });
 
@@ -2168,7 +2179,9 @@
     const ctx = { id: l.id, title: l.t };
     if (l.task && first) {
       const tk = l.task;
-      startPuzzle({ i: 'lesson-' + l.id, f: tk.f, s: tk.s, g: tk.g, t: '', l: 0, c: 'l', en: tk.en, es: tk.es }, ctx);
+      let f = tk.f;
+      if (!f) { const g = new Core.Chess(START_FEN); for (const x of tk.moves.split(' ')) g.make(g.moveFromSan(x)); f = g.fen(); }
+      startPuzzle({ i: 'lesson-' + l.id, f, s: tk.s, g: tk.g, t: '', l: 0, c: 'l', en: tk.en, es: tk.es }, ctx);
       return;
     }
     if (!l.practice) { history.back(); return; }

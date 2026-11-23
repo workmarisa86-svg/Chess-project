@@ -661,3 +661,11 @@ button { font: inherit; color: inherit; }
 .lesson-end .btn.big { margin-top: 12px; }
 .menu-btn.daily { border: 2px solid #e9b72e; }
 .menu-btn.daily.done { border-color: var(--border); }
+details.book { margin: 12px 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); padding: 0 12px; }
+details.book > summary { list-style: none; display: flex; align-items: center; gap: 12px; padding: 12px 0; cursor: pointer; }
+details.book > summary::-webkit-details-marker { display: none; }
+details.book[open] > summary { border-bottom: 1px solid var(--border); }
+details.book > .lesson-items:last-child { margin-bottom: 12px; }
+.book-icon { font-size: 1.8rem; }
+.book-t { display: flex; flex-direction: column; gap: 2px; }
+.book-t small { color: var(--muted); font-size: .82rem; }
