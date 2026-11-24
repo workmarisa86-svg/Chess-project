@@ -8,7 +8,7 @@
  *  - If you add, rename or remove files in FILES, bump VERSION. The new worker
  *    then waits, and the same notice lets the player switch when they like.
  */
-const VERSION = 'v16';
+const VERSION = 'v17';
 // Cache Storage is shared by every app on the same domain: this app only ever
 // creates, reads and deletes caches whose names start with 'chess-coach-'.
 const CACHE_PREFIX = 'chess-coach-';
@@ -23,6 +23,7 @@ const FILES = [
   'js/terms.js',
   'js/facts.js',
   'js/coach.js',
+  'js/levels.js', // the Levels path; its puzzle files (data/levels/*.js) are cached as they are used
   'js/sound.js',
   'js/app.js',
   'data/lessons.js', // the Lessons course: loaded when Lessons opens, cached for offline use

@@ -312,11 +312,24 @@
         <div class="field-label" data-i18n="chCategory">Category</div>
         <div class="ch-cats" id="chCats">
           <button type="button" data-cat="o"><span class="ci" aria-hidden="true">📘</span><b data-i18n="catOpenings">Openings</b><small></small></button>
-          <button type="button" data-cat="t"><span class="ci" aria-hidden="true">⚔️</span><b data-i18n="catTactics">Tactics</b><small></small></button>
+          <button type="button" data-cat="t"><span class="ci" aria-hidden="true">🪜</span><b data-i18n="catLevels">Levels</b><small></small></button>
           <button type="button" data-cat="e"><span class="ci" aria-hidden="true">🏁</span><b data-i18n="catEndgames">Endgames</b><small></small></button>
           <button type="button" data-cat="g"><span class="ci" aria-hidden="true">🏛️</span><b data-i18n="catGames">Master games</b><small></small></button>
         </div>
       </div>
+      <div class="lv-card" id="lvCard" hidden>
+        <div class="lv-head"><span class="lv-label" data-i18n="lvLevel">Level</span><span class="lv-num" id="lvNum">1</span><span class="lv-total" id="lvTotal"></span></div>
+        <div class="bar" aria-hidden="true"><span id="lvBar"></span></div>
+        <div class="lv-stats">
+          <div><b>🔥 <span id="lvCur">0</span></b><small data-i18n="lvStreak">Current streak</small></div>
+          <div><b>🏆 <span id="lvBest">0</span></b><small data-i18n="lvBest">Best streak</small></div>
+          <div><b>✓ <span id="lvSolved">0</span></b><small data-i18n="lvSolvedLbl">Levels passed</small></div>
+        </div>
+        <button type="button" class="btn primary big" id="btnLvPlay"><span aria-hidden="true">▶</span> <span data-i18n="lvPlay">Play</span></button>
+        <p class="hint-text" data-i18n="lvDesc"></p>
+        <p class="hint-text lv-credit" data-i18n="lvCredit"></p>
+      </div>
+      <div id="chClassic">
       <div class="field">
         <div class="field-label" data-i18n="difficulty">Difficulty</div>
         <div class="seg seg-5" id="chLevels">
@@ -332,11 +345,12 @@
         <div class="ch-progress-text" id="chProgressText"></div>
         <div class="bar" aria-hidden="true"><span id="chProgressBar"></span></div>
       </div>
-      <label class="switch-row"><span data-i18n="chTimer">Show a timer</span>
-        <input type="checkbox" id="chTimer"><span class="switch" aria-hidden="true"></span></label>
       <button type="button" class="btn primary big" id="btnChStart" data-i18n="chStart">Start</button>
       <button type="button" class="btn big next-level" id="btnChNextLevel" hidden></button>
       <p class="hint-text" id="chLoading" hidden data-i18n="loading">Loading…</p>
+      </div>
+      <label class="switch-row"><span data-i18n="chTimer">Show a timer</span>
+        <input type="checkbox" id="chTimer"><span class="switch" aria-hidden="true"></span></label>
       <button type="button" class="choice analysis-link" id="btnReview" hidden>
         <span class="ci" aria-hidden="true">↻</span>
         <span class="ct"><b></b><small data-i18n="reviewDesc"></small></span>
@@ -396,6 +410,7 @@
   <script src="js/terms.js"></script>
   <script src="js/facts.js"></script>
   <script src="js/coach.js"></script>
+  <script src="js/levels.js"></script>
   <script src="js/sound.js"></script>
   <script src="js/app.js"></script>
 </body>

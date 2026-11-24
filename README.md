@@ -30,9 +30,21 @@ Just open `index.html`.
 - **Statistics**: results by mode, level and color, the coach's counts (Great, Accurate, Good,
   Blunder, and how often you used Best move) and the challenge statistics. Reset asks for confirmation.
 - **Glossary**: every term the coach uses, alphabetical, with explanations and mini-board examples.
-- **Challenge**: hundreds of puzzles in four categories — *Openings* (traps and punishing real opening
-  mistakes), *Tactics* (forks, pins, skewers, discovered attacks, back-rank mates, deflection…),
-  *Endgames* (basic mates, opposition, the rule of the square, pawn breakthroughs, king and pawn
+- **Levels** (Challenge): a numbered path of **199,999 puzzles** from the free Lichess puzzle database
+  (CC0), like phone puzzle apps: Level 1, 2, 3… each a little harder than the last, never repeated.
+  About two thirds are **forced mates in 3, 4, 5 or more moves**; the rest are hard tactics (rated
+  1600+) such as sacrifices, deflection, decoy, clearance, interference, discovered attacks, double
+  checks, skewers, forks, pins, x-rays, in-between moves, quiet moves and zugzwang. Trivial "free
+  piece" and one-move puzzles are left out. The opponent's last move is shown in gold, then you play;
+  the robot answers until the mate or the win. A big level card shows the level, the 🔥 current streak
+  (levels solved at the first try, with no hint), the 🏆 best streak and the levels passed. A wrong move
+  offers *Try again*, *Hint* and *Show answer*; after the answer you replay the solution yourself to
+  pass the level, and the streak starts again. After each puzzle a written explanation in English or
+  Spanish names the tactic (with glossary dropdowns) and says, move by move, which piece does what,
+  why the defender's moves are forced and what is won, or why the king has no escape. Each puzzle
+  links to its page on lichess.org, and its Lichess rating updates your puzzle rating.
+- **Challenge**: hundreds more puzzles in three categories — *Openings* (traps and punishing real opening
+  mistakes), *Endgames* (basic mates, opposition, the rule of the square, pawn breakthroughs, king and pawn
   endings) and *Master games* (positions from famous games such as the Opera Game and the Immortal
   Game) — at five levels from Beginner to Impossible, with solved/total progress. The goal is shown
   above the board ("White to move · Mate in 2"). Play your move; in longer solutions the robot
@@ -58,12 +70,13 @@ Just open `index.html`.
   clearance, desperado...), *Endgame Essentials* (key squares, rook pawns, rooks behind passed pawns,
   queen against pawn, bishop and knight mate), *How to Think in a Game*, *Pawn Structures* and
   *Your Opening Repertoire*, each with longer reading pages and hands-on practice.
-- **Daily puzzle** (main menu): one puzzle a day matched to your puzzle rating, with a 🔥 streak of
+- **Daily puzzle** (main menu): one puzzle a day matched to your puzzle rating (usually a Lichess
+  puzzle near your rating, sometimes an opening, endgame or master-game position), with a 🔥 streak of
   days solved in a row.
 - **Ratings**: an estimated game rating (from fair games against the robot in Alone mode; the robot
   levels are rated about 400/800/1200/1600/2000) and a puzzle rating (first try at each puzzle), both
   with Glicko-2, the system Lichess uses. Shown on the menu, in Robot setup and in Statistics.
-- **Review missed puzzles** (Challenge): puzzles you got wrong come back until you solve them.
+- **Review missed puzzles** (Challenge): puzzles you got wrong (Levels included) come back until you solve them.
 - **Guess the master's move** (Challenge): play through five famous games as the winner and see how
   many of the master's moves you find.
 - **Lessons**: a short course in nine chapters (first steps, simple mates, pawn endings, winning won
@@ -78,8 +91,9 @@ Just open `index.html`.
   touching, the side not to move can't be in check). **Best move** runs the engine in a Web Worker
   (progress bar, Cancel) and shows the best move with an arrow, the top three candidates with an
   evaluation, and why the best one works. Play it, keep exploring, Undo, or Edit again.
-- **Challenge statistics**: puzzles solved, first-try accuracy, current and best streak, and results
-  by category and level, with their own Reset.
+- **Challenge statistics**: the level reached, levels passed and the Levels streaks; puzzles solved,
+  first-try accuracy, current and best streak, and results by category and difficulty, with their own
+  Reset (which keeps the level you reached).
 
 ## Install it and play offline
 
@@ -125,12 +139,15 @@ js/i18n.js       interface text in English and Spanish
 js/terms.js      glossary terms, openings and opening book
 js/facts.js      "Did you know?" facts
 js/coach.js      move ratings and best-move explanations
+js/levels.js     the Levels path: reads the puzzle files and writes each puzzle's explanation
 js/sound.js      board sounds (synthesized, no audio files)
 js/app.js        board, controls, game flow, challenge and analysis board
 books/bluebook/, books/morphy/  the other classic books (same layout)
 books/fundamentals/  Capablanca's book: text.json (chapters), games.json (converted games), img/ (diagrams)
 data/lessons.js  the Lessons course (loaded when Lessons opens; cached for offline use)
 data/challenges.js  the puzzles (loaded only when Challenge opens; cached for offline use)
+data/levels/     the Levels puzzles, 2,000 per file (000.js … 099.js, about 18 MB in all); each file
+                 loads only when its levels are reached, and is then kept for offline use
 tools/           Node.js scripts that generate and verify the puzzles (not used by the app)
 manifest.webmanifest  app name, colors and icons for installing
 sw.js            service worker: stores the app for offline use
@@ -153,6 +170,29 @@ clearly the best one: a forced mate (and no equally fast alternative), the only 
 draw, or a decisive margin over the second-best move. Positions that fail are discarded. The
 explanations are written from the engine's analysis by the coach, in English and Spanish.
 
+### The Levels puzzles (Lichess)
+
+The Levels come from the [Lichess open puzzle database](https://database.lichess.org/#puzzles)
+(public domain, CC0):
+
+- `python3 -I tools/select-lichess-puzzles.py lichess_db_puzzle.csv.zst levels.tsv` (needs
+  `pip install zstandard`) keeps well-tested puzzles (rating deviation under 90, popularity 85+,
+  300+ plays) without the `hangingPiece` or `oneMove` themes: 130,000 forced mates in 3 or more
+  moves and 70,000 tactics rated 1600+ with at least two moves to find. They are sorted by Lichess
+  rating, lightly shuffled within narrow rating bands, and spread so the same idea (for example a
+  back-rank mate) does not come many times in a row.
+- `node tools/build-levels.js levels.tsv --check 300 --report sample.txt` replays every line with
+  the app's engine (every move legal, every mate puzzle ends in checkmate), searches a random sample
+  of 300 with the engine to confirm the first move, drops any that fail, and writes `data/levels/`
+  in a compact form: one line per puzzle with the Lichess id, the position, the moves written
+  together, the rating and one-letter theme codes. `--report` writes the explanations of a sample of
+  levels to read through.
+
+The explanations are not stored: `js/levels.js` writes them when a puzzle starts, from the Lichess
+theme tags, the coach's tactic detection (`Coach.detectTactics` on each of your moves, with the rest
+of the solution as the line) and the solution itself (captures, forced replies, the king's blocked
+escape squares, the material won).
+
 ## Publish it with GitHub Pages
 
 1. Push these files to the repository's default branch (for example `main`), with `index.html` at the root.
@@ -165,6 +205,9 @@ explanations are written from the engine's analysis by the coach, in English and
 Every time you push changes to that branch, the site updates automatically.
 
 ## Credits
+
+Levels puzzles: the **[Lichess open database](https://database.lichess.org/)** (lichess.org), released
+into the public domain under **CC0**. Each puzzle links to its page on lichess.org.
 
 Chess pieces: the **cburnett** set by
 **[Colin M.L. Burnett](https://en.wikipedia.org/wiki/User:Cburnett)**, licensed under the
