@@ -959,6 +959,8 @@
       case 'pzNext': nextPuzzle(); break;
       case 'pzNextLevel': goToLevel(+b.dataset.level); break;
       case 'pzHub': history.back(); break;
+      case 'lvNext': startLevel(); break;
+      case 'lvRetry': startLevel(state.pz.p.level, 'levelRetry'); break;
       case 'lsMore': { const l = allLessons().find(x => x.id === state.lessonCtx.id); if (l) lessonTask(l, false); break; }
       case 'lsBack': history.back(); break;
       case 'toMenu': goMenu(); break;
@@ -1252,6 +1254,7 @@
       top.html = p.g === 'guess' ? `<span class="player-name">🏛️ ${esc(p.n[state.lang])}</span>` :
         state.pzCtx && state.pzCtx.kind === 'daily' ? `<span class="player-name">🗓 ${esc(t('daily'))}</span>` :
         state.lessonCtx ? `<span class="player-name">📚 ${esc(state.lessonCtx.title[state.lang])}</span>` :
+        p.lid ? `<span class="player-name">🪜 ${esc(tf('lvLevelN', { n: fmtN(p.level) }))} · ${esc(tf('lvRating', { r: p.r }))}${isLevelCtx() ? ` · 🔥 ${lvState().cur}` : ''}</span>` :
         `<span class="player-name">🎯 ${esc(t(CAT_NAME[p.c]))} · ${esc(t(LEVEL_KEY[LEVELS[p.l]]))}</span>`;
       top.active = false;
       bottom.html = `<span class="player-name"><span class="swatch ${state.pz.color === WHITE ? 'w' : 'b'}"></span>${esc(t('you'))}</span>` +
@@ -1276,7 +1279,7 @@
       (state.strip && (state.strip.kind === 'blunder' || state.strip.kind === 'best'));
     $('btnHint').hidden = !puzzle || !pz || pz.done;
     $('btnHint').disabled = !pz || pz.auto || state.hintSq >= 0;
-    $('btnSkip').hidden = !puzzle || !pz || pz.done;
+    $('btnSkip').hidden = !puzzle || !pz || pz.done || isLevelCtx();
     $('btnSkip').disabled = !pz || pz.auto;
     $('btnNext').hidden = !puzzle || !pz || !pz.done;
     $('btnEdit').hidden = !analysis;
@@ -1307,6 +1310,7 @@
   $('btnNext').addEventListener('click', () => {
     if (state.pzCtx && state.pzCtx.kind === 'daily') goMenu();
     else if (state.pzCtx && state.pzCtx.kind === 'review') startReview();
+    else if (isLevelCtx()) { if (state.pz.failed) startLevel(state.pz.p.level, 'levelRetry'); else startLevel(); }
     else if (state.lessonCtx || state.pzCtx) history.back();
     else nextPuzzle();
   });
@@ -1357,7 +1361,7 @@
   // replies in between), g goal, t theme, l level 0-4, c category, en/es
   // explanation, n game name and a "what happened next" for master games.
   const CATS = ['o', 't', 'e', 'g'];
-  const CAT_NAME = { o: 'catOpenings', t: 'catTactics', e: 'catEndgames', g: 'catGames' };
+  const CAT_NAME = { o: 'catOpenings', t: 'catLevels', e: 'catEndgames', g: 'catGames' };
   const chSetup = Object.assign({ cat: 't', level: 0, timer: false }, store.get('challengeSetup', {}));
   if (!CATS.includes(chSetup.cat)) chSetup.cat = 't';
   if (!(chSetup.level >= 0 && chSetup.level <= 4)) chSetup.level = 0;
@@ -1383,6 +1387,73 @@
   const uciOf = m => sqName(mFrom(m)) + sqName(mTo(m)) + (mPromo(m) ? PROMO_CH[mPromo(m)] : '');
   const fromUci = (g, u) => g.moves().find(m => uciOf(m) === u) || 0;
 
+  // ---------------------------------------------------------------- levels
+  // Level n is puzzle n of the Lichess list (js/levels.js), easiest first.
+  // The file holding it (Levels.CHUNK puzzles) is loaded when needed and kept
+  // for offline use by the service worker; the next file is fetched in the
+  // background so the path never has to wait.
+  //   next: the level to play, cur/best: streaks of levels solved at the first
+  //   try, solved: levels passed, missAt: a level already missed (no first try).
+  const lvState = () => Object.assign({ next: 1, cur: 0, best: 0, solved: 0, first: 0, missAt: 0 }, store.get('levels', {}));
+  const isLevelCtx = () => !!state.pzCtx && (state.pzCtx.kind === 'level' || state.pzCtx.kind === 'levelRetry');
+  const fmtN = n => Number(n).toLocaleString(state.lang === 'es' ? 'es-ES' : 'en-US');
+  const chunkUrl = k => `data/levels/${String(k).padStart(3, '0')}.js`;
+  const chunkLoads = {}, prefetched = new Set();
+  function loadChunk(k) {
+    if (Levels.has(k * Levels.CHUNK + 1)) return Promise.resolve();
+    if (!chunkLoads[k]) {
+      chunkLoads[k] = new Promise((resolve, reject) => {
+        const el = document.createElement('script');
+        el.src = chunkUrl(k);
+        el.onload = () => { el.remove(); if (Levels.has(k * Levels.CHUNK + 1)) resolve(); else { delete chunkLoads[k]; reject(new Error('no data')); } };
+        el.onerror = () => { delete chunkLoads[k]; el.remove(); reject(new Error('load failed')); };
+        document.head.appendChild(el);
+      });
+    }
+    return chunkLoads[k];
+  }
+  // Download (and so cache) the next file ahead of time, without running it.
+  function prefetchChunk(k) {
+    if (k * Levels.CHUNK >= Levels.TOTAL || prefetched.has(k) || Levels.has(k * Levels.CHUNK + 1)) return;
+    prefetched.add(k);
+    fetch(chunkUrl(k)).catch(() => prefetched.delete(k));
+  }
+  function levelPuzzle(n) {
+    const k = Levels.chunkOf(n);
+    return loadChunk(k).then(() => {
+      prefetchChunk(k + 1);
+      const p = Levels.get(n);
+      if (!p) throw new Error('bad level');
+      return p;
+    });
+  }
+  function startLevel(n, kind) {
+    const lv = lvState();
+    n = n || lv.next;
+    if (n > Levels.TOTAL) { toast('lvAllDone'); return; }
+    levelPuzzle(n).then(p => startPuzzle(p, null, { kind: kind || 'level' })).catch(() => toast('loadFailed'));
+  }
+  // A wrong move, a hint or the answer: this level can no longer count for the streak.
+  function levelMiss() {
+    if (!isLevelCtx()) return;
+    const lv = lvState();
+    if (lv.missAt === state.pz.p.level && !lv.cur) return;
+    lv.missAt = state.pz.p.level;
+    lv.cur = 0;
+    store.set('levels', lv);
+  }
+  function finishLevel(pz) {
+    const lv = lvState(), n = pz.p.level;
+    const retry = state.pzCtx.kind === 'levelRetry';
+    if (pz.failed) { lv.cur = 0; lv.missAt = n; store.set('levels', lv); return; }
+    const first = !retry && !pz.mistakes && !pz.hints && lv.missAt !== n;
+    if (first) { lv.cur++; lv.first++; lv.best = Math.max(lv.best, lv.cur); } else lv.cur = 0;
+    if (n >= lv.next) { lv.next = n + 1; lv.solved++; }
+    if (lv.missAt === n) lv.missAt = 0;
+    store.set('levels', lv);
+    pz.levelFirst = first;
+  }
+
   // Challenge statistics: solved puzzles (by id), first-try results, streaks,
   // and results per category and level.
   function chStats() {
@@ -1401,7 +1472,7 @@
     };
     bump(s.cat, p.c); bump(s.lvl, p.l);
     if (result === 'first') { s.first++; s.cur++; s.best = Math.max(s.best, s.cur); } else s.cur = 0;
-    if (result !== 'failed') s.solved[p.i] = 1;
+    if (result !== 'failed' && !p.lid) s.solved[p.i] = 1;
     // missed puzzles come back in "Review missed" until they are solved
     s.missed = s.missed && typeof s.missed === 'object' ? s.missed : {};
     if (result === 'failed') s.missed[p.i] = 1; else delete s.missed[p.i];
@@ -1468,6 +1539,19 @@
     state.pzCtx = extra || null;      // { kind: 'daily' | 'review' | 'guess' }
     state.startFen = p.f;
     state.game = new Core.Chess(p.f);
+    if (p.pre) {
+      // Lichess puzzles start with the opponent's move, shown as the last move.
+      const m = fromUci(state.game, p.pre);
+      if (m) {
+        state.sans.push(state.game.san(m, state.game.moves()));
+        state.game.make(m);
+        state.moves.push(m);
+        state.lastMove = { from: mFrom(m), to: mTo(m) };
+      }
+    }
+    if (p.lid && !p.en) {
+      try { const ex = Levels.explain(p); p.en = ex.en; p.es = ex.es; p.t = ex.t; } catch (e) { /* no explanation */ }
+    }
     state.pz = {
       p, line: p.s.split(' '), step: 0, color: state.game.turn,
       mistakes: 0, hints: 0, done: false, failed: false, auto: false, recorded: false, t0: performance.now(), t: 0
@@ -1494,7 +1578,8 @@
     if (g === 'guess') return `${t('guessTitle')} · ${tf('guessProgress', { a: pz.guessHit || 0, n: pz.guessN || 0 })}`;
     const goal = g.charAt(0) === 'm' && g !== 'mat' ? tf('goalMate', { n: g.slice(1) }) :
       t({ mat: 'goalMaterial', win: 'goalWin', draw: 'goalDraw', best: 'goalBest' }[g] || 'goalBest');
-    return `${t(pz.color === WHITE ? 'whiteToMove' : 'blackToMove')} · ${goal}`;
+    const lvl = isLevelCtx() ? tf('lvLevelN', { n: fmtN(pz.p.level) }) + ' · ' : '';
+    return `${lvl}${t(pz.color === WHITE ? 'whiteToMove' : 'blackToMove')} · ${goal}`;
   }
 
   function puzzleMove(m) {
@@ -1507,6 +1592,7 @@
     applyMove(m);
     if (!ok) {
       pz.mistakes++;
+      levelMiss();
       state.strip = { kind: 'pzWrong' };
       Sound.play('error');
       renderGame();
@@ -1539,6 +1625,7 @@
     if (state.strip && state.strip.kind === 'pzWrong') undoPlies(1);
     state.strip = null;
     pz.hints++;
+    levelMiss();
     const m = fromUci(state.game, pz.line[pz.step]);
     state.hintSq = m ? mFrom(m) : -1; // highlight the piece to move
     renderGame();
@@ -1550,6 +1637,7 @@
     if (state.strip && state.strip.kind === 'pzWrong') undoPlies(1);
     pz.failed = true;
     pz.auto = true;
+    levelMiss();
     state.strip = null;
     state.hintSq = -1;
     const token = ++state.token;
@@ -1577,16 +1665,20 @@
     pz.auto = false;
     pz.t = performance.now() - pz.t0;
     state.hintSq = -1;
-    const wasDone = levelDone(pz.p.c, pz.p.l);
+    const wasDone = !pz.p.lid && levelDone(pz.p.c, pz.p.l);
     if (state.lessonCtx && !pz.failed) markLesson(state.lessonCtx.id, 'p');
     if (pz.p.c === 'l' || pz.p.g === 'guess') pz.recorded = true; // lesson examples and guess games are not Challenge results
     if (state.pzCtx && state.pzCtx.kind === 'daily') finishDaily(!pz.failed);
+    if (isLevelCtx()) {
+      finishLevel(pz);
+      if (state.pzCtx.kind === 'levelRetry') pz.recorded = true; // counted once, when the answer was shown
+    }
     if (!pz.recorded) {
       pz.recorded = true;
       recordChallenge(pz.p, pz.failed ? 'failed' : (pz.mistakes || pz.hints) ? 'solved' : 'first');
     }
     // This solve finished the whole level: offer the next one.
-    state.strip = { kind: pz.failed ? 'pzAnswer' : 'pzSolved', levelDone: !wasDone && levelDone(pz.p.c, pz.p.l) };
+    state.strip = { kind: pz.failed ? 'pzAnswer' : 'pzSolved', levelDone: !pz.p.lid && !wasDone && levelDone(pz.p.c, pz.p.l) };
     if (!pz.failed && !state.over) Sound.play('notify');
     nextFact();
     $('endFact').hidden = false;
@@ -1625,7 +1717,24 @@
         <div class="strip-actions"><button type="button" class="btn small primary" data-strip="guessAgain">🏛️ ${esc(t('anotherGame'))}</button>
         <button type="button" class="btn small" data-strip="lsBack">↩ ${esc(t('back'))}</button></div>`;
     }
-    if (state.pzCtx && state.pzCtx.kind === 'daily') {
+    if (p.lid) {
+      body += `<p class="pz-credit">${esc(tf('lvLichess', { id: p.lid }))} · <a href="https://lichess.org/training/${esc(p.lid)}" target="_blank" rel="noopener">lichess.org</a></p>`;
+    }
+    if (isLevelCtx()) {
+      const lv = lvState();
+      const streaks = `<span class="lv-streaks">🔥 ${esc(tf('lvStreakShort', { n: lv.cur }))} · 🏆 ${esc(tf('lvBestShort', { n: lv.best }))}</span>`;
+      if (kind === 'pzSolved') {
+        banner = `<div class="level-done lv-banner">🎉 <b>${esc(tf('lvPassed', { n: fmtN(p.level) }))}</b> ${streaks}</div>`;
+        actions = lv.next <= Levels.TOTAL ?
+          `<button type="button" class="btn small primary" data-strip="lvNext">${esc(tf('lvLevelN', { n: fmtN(lv.next) }))} →</button>
+           <button type="button" class="btn small" data-strip="pzHub">↩ ${esc(t('back'))}</button>` :
+          `<button type="button" class="btn small primary" data-strip="pzHub">${esc(t('lvAllDone'))}</button>`;
+      } else {
+        banner = `<div class="level-done lv-banner">${esc(tf('lvLevelN', { n: fmtN(p.level) }))} · ${esc(t('lvAnswerNote'))} ${streaks}</div>`;
+        actions = `<button type="button" class="btn small primary" data-strip="lvRetry">↻ ${esc(t('tryAgain'))}</button>
+          <button type="button" class="btn small" data-strip="pzHub">↩ ${esc(t('back'))}</button>`;
+      }
+    } else if (state.pzCtx && state.pzCtx.kind === 'daily') {
       const d = dailyState();
       banner = `<div class="level-done">🗓 <b>${esc(t('daily'))}</b> · ${esc(tf('dailyStreak', { n: d.last === dayKey() ? d.streak : 0 }))}</div>`;
       actions = `<button type="button" class="btn small primary" data-strip="toMenu">${esc(t('backToMenu'))}</button>`;
@@ -1653,8 +1762,27 @@
   }
 
   // ---------------------------------------------------------------- challenge screen
+  function renderLevelCard() {
+    const lv = lvState();
+    $('lvNum').textContent = fmtN(Math.min(lv.next, Levels.TOTAL));
+    $('lvCur').textContent = lv.cur;
+    $('lvBest').textContent = lv.best;
+    $('lvSolved').textContent = fmtN(lv.solved);
+    $('lvTotal').textContent = tf('lvOf', { n: fmtN(Levels.TOTAL) });
+    $('lvBar').style.width = Math.min(100, lv.solved / Levels.TOTAL * 100) + '%';
+    $('btnLvPlay').disabled = lv.next > Levels.TOTAL;
+    document.querySelector('#chCats [data-cat="t"] small').textContent = tf('lvLevelN', { n: fmtN(Math.min(lv.next, Levels.TOTAL)) });
+    // Get the current file ready (and cached for offline use) while the card is on screen.
+    loadChunk(Levels.chunkOf(Math.min(lv.next, Levels.TOTAL))).catch(() => {});
+  }
+  $('btnLvPlay').addEventListener('click', () => startLevel());
+
   function renderChallenge() {
     document.querySelectorAll('#chCats [data-cat]').forEach(b => b.classList.toggle('selected', b.dataset.cat === chSetup.cat));
+    const levels = chSetup.cat === 't';
+    $('lvCard').hidden = !levels;
+    $('chClassic').hidden = levels;
+    renderLevelCard();
     document.querySelectorAll('#chLevels [data-l]').forEach(b => b.classList.toggle('selected', +b.dataset.l === chSetup.level));
     $('chLevelDesc').textContent = t('chLvlDesc' + chSetup.level);
     $('chTimer').checked = !!chSetup.timer;
@@ -1672,6 +1800,7 @@
     $('chProgress').hidden = false;
     const solved = chStats().solved;
     document.querySelectorAll('#chCats [data-cat]').forEach(b => {
+      if (b.dataset.cat === 't') return; // the Levels path (renderLevelCard)
       const list = all.filter(p => p.c === b.dataset.cat);
       b.querySelector('small').textContent = tf('chSolvedShort', { s: list.filter(p => solved[p.i]).length, n: list.length });
     });
@@ -2027,25 +2156,32 @@
   }
   function renderChStats() {
     renderRatings();
-    const s = chStats();
-    const solvedN = Object.keys(s.solved).length;
+    const s = chStats(), lv = lvState();
+    const solvedN = Object.keys(s.solved).length + lv.solved;
     $('btnResetCh').disabled = !s.played && !solvedN;
     const body = $('chStatsBody');
-    if (!s.played) { body.innerHTML = `<p class="empty">${esc(t('chStatsEmpty'))}</p>`; return; }
+    const credit = `<p class="hint-text lv-credit">${esc(t('lvCredit'))}</p>`;
+    if (!s.played) { body.innerHTML = `<p class="empty">${esc(t('chStatsEmpty'))}</p>` + credit; return; }
     const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '—';
-    let html = `<div class="stats-summary">` + tile('chSolvedCount', solvedN) + tile('chPlayed', s.played) +
+    let html = `<h4 class="stats-sub">${esc(t('catLevels'))}</h4><div class="stats-summary">` + tile('lvStatsReached', fmtN(Math.min(lv.next, Levels.TOTAL))) +
+      tile('lvSolvedLbl', fmtN(lv.solved)) + tile('lvStreak', '🔥 ' + lv.cur) + tile('lvBest', '🏆 ' + lv.best) + '</div>';
+    html += `<h4 class="stats-sub">${esc(t('chAll'))}</h4><div class="stats-summary">` + tile('chSolvedCount', solvedN) + tile('chPlayed', s.played) +
       tile('chFirstTry', pct(s.first, s.played)) + tile('chStreak', s.cur) + tile('chBestStreak', s.best) + '</div>';
     const table = (title, keys, nameOf, obj) => `<div class="table-scroll"><table class="stats-table">` +
       `<tr><th>${esc(title)}</th><th>${esc(t('chPlayed'))}</th><th>${esc(t('chSolvedCol'))}</th><th>${esc(t('chFirstTry'))}</th></tr>` +
       keys.map(k => { const r = obj[k] || { p: 0, s: 0, f: 0 }; return `<tr><td>${esc(nameOf(k))}</td><td>${r.p}</td><td>${r.s}</td><td>${pct(r.f, r.p)}</td></tr>`; }).join('') +
       '</table></div>';
     html += table(t('chCategory'), CATS, k => t(CAT_NAME[k]), s.cat);
-    html += table(t('level'), [0, 1, 2, 3, 4], k => t(LEVEL_KEY[LEVELS[k]]), s.lvl);
-    body.innerHTML = html;
+    html += table(t('difficulty'), [0, 1, 2, 3, 4], k => t(LEVEL_KEY[LEVELS[k]]), s.lvl);
+    body.innerHTML = html + credit;
   }
   $('btnResetCh').addEventListener('click', () => {
     ask('resetChTitle', t('resetChConfirm'), [
-      { key: 'resetYes', cls: 'danger', fn: () => { store.remove('challengeStats'); store.remove('challengeDeck'); seenThisSession.clear(); renderStats(); toast('resetDone'); } },
+      { key: 'resetYes', cls: 'danger', fn: () => {
+        store.remove('challengeStats'); store.remove('challengeDeck'); seenThisSession.clear();
+        const lv = lvState(); lv.cur = 0; lv.best = 0; lv.first = 0; store.set('levels', lv); // the level reached is kept
+        renderStats(); toast('resetDone');
+      } },
       { key: 'cancel' }
     ]);
   });
@@ -2216,7 +2352,7 @@
   // Estimated, not official: a game rating from fair games against the robot
   // (Alone mode, no Undo) and a puzzle rating from the first try at each puzzle.
   const ROBOT_RATING = { beginner: 400, easy: 800, medium: 1200, hard: 1600, impossible: 2000 };
-  const puzzleRating = p => 800 + 300 * p.l + 50 * (Math.ceil(p.s.split(' ').length / 2) - 1);
+  const puzzleRating = p => p.r || 800 + 300 * p.l + 50 * (Math.ceil(p.s.split(' ').length / 2) - 1);
   const ratings = () => Object.assign({ game: null, puzzle: null }, store.get('ratings', {}));
   function glicko(p, oppR, oppRD, score) {
     const Q = 173.7178, TAU = 0.5;
@@ -2255,15 +2391,26 @@
   const dayKey = d => { const x = d || new Date(); return `${x.getFullYear()}-${x.getMonth() + 1}-${x.getDate()}`; };
   const yesterdayKey = () => { const d = new Date(); d.setDate(d.getDate() - 1); return dayKey(d); };
   const dailyState = () => Object.assign({ day: '', done: false, streak: 0, best: 0, last: '' }, store.get('daily', {}));
+  function dayHash() {
+    let h = 2166136261;
+    for (const ch of dayKey()) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+    return h;
+  }
+  // Two days in three a Lichess puzzle near your puzzle rating (tactics and
+  // mates); otherwise an opening, endgame or master-game position.
   function dailyPuzzle(all) {
     const pr = ratings().puzzle;
     const lvl = Math.max(0, Math.min(4, Math.round(((pr ? pr.r : 1100) - 800) / 300)));
-    const pool = all.filter(p => p.l === lvl && p.c !== 'l');
-    let h = 2166136261;
-    for (const ch of dayKey()) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
-    return pool[h % pool.length];
+    const pool = all.filter(p => p.l === lvl && p.c !== 'l' && p.c !== 't');
+    return pool[dayHash() % pool.length];
   }
   function startDaily() {
+    const h = dayHash();
+    if (h % 3) {
+      const pr = ratings().puzzle;
+      levelPuzzle(Levels.levelForRating(pr ? pr.r : 1100, h)).then(p => startPuzzle(p, null, { kind: 'daily' })).catch(() => toast('loadFailed'));
+      return;
+    }
     loadPuzzles().then(all => { const p = dailyPuzzle(all); if (p) startPuzzle(p, null, { kind: 'daily' }); }).catch(() => toast('loadFailed'));
   }
   function finishDaily(solved) {
@@ -2292,11 +2439,16 @@
   // ---------------------------------------------------------------- missed puzzles
   const missedIds = () => Object.keys(chStats().missed || {});
   function startReview() {
-    loadPuzzles().then(all => {
-      const ids = missedIds(), pool = all.filter(p => ids.includes(p.i) && (!state.pz || p.i !== state.pz.p.i));
-      const list = pool.length ? pool : all.filter(p => ids.includes(p.i));
-      if (!list.length) { history.back(); return; }
-      startPuzzle(list[Math.floor(Math.random() * list.length)], null, { kind: 'review' });
+    const ids = missedIds(), cur = state.pz ? state.pz.p.i : null;
+    const others = ids.filter(i => i !== cur), list = others.length ? others : ids;
+    if (!list.length) { history.back(); return; }
+    const id = list[Math.floor(Math.random() * list.length)];
+    // Missed Levels puzzles ("L281") come from the Lichess files, the others from the Challenge set.
+    const find = /^L\d+$/.test(id) ? levelPuzzle(+id.slice(1)) : loadPuzzles().then(all => all.find(p => p.i === id));
+    find.then(p => {
+      if (p) { startPuzzle(p, null, { kind: 'review' }); return; }
+      const s = chStats(); delete s.missed[id]; store.set('challengeStats', s); // no longer exists
+      startReview();
     }).catch(() => toast('loadFailed'));
   }
   $('btnReview').addEventListener('click', startReview);

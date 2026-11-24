@@ -97,6 +97,30 @@ const TERMS = {
     es: { n: 'sacrificio', a: 'un', d: 'Entregar material a propósito para conseguir algo más valioso: un ataque, un mate o incluso más material.', w: 'Un sacrificio bien calculado puede romper una defensa sólida.', x: 'Una combinación famosa: Dg8+!! entrega la dama. Tras Txg8 (la única jugada), Cf7 es jaque mate.' },
     demo: { fen: '3r3k/6pp/1q5N/3Q4/8/8/5PPP/6K1 w - - 0 1', arrows: [['d5', 'g8'], ['h6', 'f7']], marks: ['h8'] }
   },
+  clearance: {
+    cat: 'tactic',
+    en: { n: 'clearance', a: 'a', d: 'You move a piece out of the way, often with check or as a sacrifice, to free a square or a line for another of your pieces.', w: 'Sometimes your own piece is the only thing stopping a winning idea. Moving it away with tempo opens the door.', x: 'The white queen on a8 blocks its own pawn on a7. Qh8+! gives check and clears a8; after the king moves, the pawn promotes on a8.' },
+    es: { n: 'despeje', a: 'un', d: 'Apartas una pieza, a menudo con jaque o sacrificándola, para dejar libre una casilla o una línea a otra de tus piezas.', w: 'A veces tu propia pieza es lo único que impide una idea ganadora. Apartarla ganando tiempo abre el camino.', x: 'La dama blanca de a8 tapa a su propio peón de a7. ¡Dh8+! da jaque y deja libre a8; cuando el rey se mueve, el peón corona en a8.' },
+    demo: { fen: 'Q7/P7/4pppk/8/q7/3KP3/7p/8 w - - 0 1', arrows: [['a8', 'h8'], ['a7', 'a8']], marks: ['a8'] }
+  },
+  interference: {
+    cat: 'tactic',
+    en: { n: 'interference', a: 'an', d: 'You put a piece on the line between an enemy piece and the square it defends, cutting the connection.', w: 'The defender is still on the board, but it can no longer do its job, so the square it guarded falls.', x: 'The black rook on e8 guards b8 along the back rank. Bc8! cuts the rank: if the rook takes the bishop, the pawn takes back and promotes; if not, b8 becomes a queen.' },
+    es: { n: 'interferencia', a: 'una', d: 'Colocas una pieza en la línea entre una pieza rival y la casilla que defiende, cortando la conexión.', w: 'El defensor sigue en el tablero, pero ya no puede hacer su trabajo, así que cae la casilla que protegía.', x: 'La torre negra de e8 defiende b8 por la última fila. ¡Ac8! corta la fila: si la torre captura el alfil, el peón recaptura y corona; si no, b8 se convierte en dama.' },
+    demo: { fen: '4r3/1P6/7k/5B2/8/8/2K5/8 w - - 0 1', arrows: [['f5', 'c8'], ['b7', 'b8']], marks: ['c8', 'b8'] }
+  },
+  quietMove: {
+    cat: 'tactic',
+    en: { n: 'quiet move', a: 'a', d: 'A strong move that does not check, capture or attack anything right away, but sets up a threat the opponent cannot meet.', w: 'Players look for checks and captures first, so a quiet move is easy to miss, for you and for your opponent.', x: 'White plays Kg6! — no check, no capture — and now threatens Re8 mate. Black cannot stop it.' },
+    es: { n: 'jugada tranquila', a: 'una', d: 'Una jugada fuerte que no da jaque, no captura ni ataca nada de inmediato, pero prepara una amenaza que el rival no puede parar.', w: 'Solemos buscar primero jaques y capturas, así que una jugada tranquila es fácil de pasar por alto, para ti y para tu rival.', x: 'Las blancas juegan ¡Rg6! —ni jaque ni captura— y amenazan Te8 mate. Las negras no pueden evitarlo.' },
+    demo: { fen: '7k/4R2P/8/5K2/1p6/2p3P1/1r6/8 w - - 0 1', arrows: [['f5', 'g6'], ['e7', 'e8']], marks: ['h8'] }
+  },
+  trappedPiece: {
+    cat: 'tactic',
+    en: { n: 'trapped piece', a: 'a', d: 'A piece that has no safe square to go to, so it can be attacked and won.', w: 'Pieces on the edge of the board, or shut in by their own pawns, often get trapped.', x: 'The black rook on h6 has only bad squares. Kg7! attacks it, and every square it could flee to is covered: the rook is lost.' },
+    es: { n: 'pieza atrapada', a: 'una', d: 'Una pieza que no tiene ninguna casilla segura adonde ir, así que se puede atacar y ganar.', w: 'Las piezas en el borde del tablero, o encerradas por sus propios peones, suelen quedar atrapadas.', x: 'La torre negra de h6 solo tiene casillas malas. ¡Rg7! la ataca y todas las casillas a las que podría huir están controladas: la torre se pierde.' },
+    demo: { fen: '8/5K2/5p1r/3Rp2p/8/5k2/7P/8 w - - 0 1', arrows: [['f7', 'g7']], marks: ['h6'] }
+  },
   hangingPiece: {
     cat: 'tactic',
     en: { n: 'hanging piece', a: 'a', d: 'A piece that is attacked and not defended (or not defended enough), so it can be captured for free.', w: 'Before every move, check: are any of my pieces hanging? Can I capture a hanging enemy piece?', x: 'The black knight on e5 is attacked by the queen on e2 and nothing defends it: Qxe5+ wins it.' },
@@ -108,6 +132,24 @@ const TERMS = {
     en: { n: 'smothered mate', a: 'a', d: 'A checkmate delivered by a knight when the king is completely surrounded ("smothered") by its own pieces.', w: 'It shows how a king with no free squares can be mated by a single knight.', x: 'The black king on h8 is blocked by its rook on g8 and pawns on g7 and h7. Nf7 is checkmate.' },
     es: { n: 'mate de la coz', a: 'un', d: 'Jaque mate dado por un caballo cuando el rey está totalmente rodeado ("ahogado") por sus propias piezas.', w: 'Demuestra cómo un rey sin casillas libres puede recibir mate de un solo caballo.', x: 'El rey negro de h8 está bloqueado por su torre de g8 y sus peones de g7 y h7. Cf7 es jaque mate.' },
     demo: { fen: '6rk/5Npp/8/8/8/8/8/6K1 b - - 0 1', arrows: [['f7', 'h8']], marks: ['h8'] }
+  },
+  anastasiaMate: {
+    cat: 'tactic',
+    en: { n: 'Anastasia’s mate', a: '', d: 'A knight and a rook (or queen) mate a king on the edge of the board: the knight covers the escape squares, and the rook checks along the edge file.', w: 'It often follows a queen sacrifice that opens the h-file in front of a castled king.', x: 'The knight on e7 covers g8 and g6, the pawn on g7 blocks the king, and the rook on h1 gives mate on the h-file.' },
+    es: { n: 'mate de Anastasia', a: 'un', d: 'Un caballo y una torre (o dama) dan mate a un rey en el borde del tablero: el caballo controla las casillas de escape y la torre da jaque por la columna del borde.', w: 'Suele llegar tras un sacrificio de dama que abre la columna h delante del rey enrocado.', x: 'El caballo de e7 controla g8 y g6, el peón de g7 estorba al rey y la torre de h1 da mate por la columna h.' },
+    demo: { fen: '8/4N1pk/8/8/8/8/8/6KR b - - 0 1', arrows: [['h1', 'h7']], marks: ['h7'] }
+  },
+  arabianMate: {
+    cat: 'tactic',
+    en: { n: 'Arabian mate', a: 'an', d: 'A rook and a knight mate a king in the corner: the rook checks from the square next to the king, and the knight protects it and covers the last escape square.', w: 'One of the oldest known mating patterns. Look for it whenever the enemy king sits in a corner.', x: 'The rook on h7 checks the king on h8, the knight on f6 protects the rook and covers g8: checkmate.' },
+    es: { n: 'mate árabe', a: 'un', d: 'Una torre y un caballo dan mate a un rey en la esquina: la torre da jaque desde la casilla de al lado y el caballo la protege y controla la última casilla de escape.', w: 'Es uno de los patrones de mate más antiguos que se conocen. Búscalo siempre que el rey rival esté en una esquina.', x: 'La torre de h7 da jaque al rey de h8; el caballo de f6 protege la torre y controla g8: jaque mate.' },
+    demo: { fen: '7k/7R/5N2/8/8/8/8/6K1 b - - 0 1', arrows: [['f6', 'h7'], ['f6', 'g8']], marks: ['h8'] }
+  },
+  operaMate: {
+    cat: 'tactic',
+    en: { n: 'Opera mate', a: 'an', d: 'A rook (or queen) mates on the back rank, protected by a bishop from far away, while the king is boxed in by its own pieces.', w: 'Named after Morphy’s famous game at the Paris opera in 1858, which ended this way.', x: 'The rook on d8 checks the king on e8, the bishop on g5 protects it and covers e7, and the pawn on f7 blocks the last square.' },
+    es: { n: 'mate de la ópera', a: 'un', d: 'Una torre (o dama) da mate en la última fila, protegida a distancia por un alfil, mientras el rey está encerrado por sus propias piezas.', w: 'Debe su nombre a la famosa partida de Morphy en la ópera de París en 1858, que terminó así.', x: 'La torre de d8 da jaque al rey de e8, el alfil de g5 la protege y controla e7, y el peón de f7 tapa la última casilla.' },
+    demo: { fen: '3Rk3/5p2/8/6B1/8/8/8/6K1 b - - 0 1', arrows: [['g5', 'd8']], marks: ['e8'] }
   },
   threat: {
     cat: 'tactic',

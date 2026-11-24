@@ -693,3 +693,24 @@ details.book > .lesson-items:last-child { margin-bottom: 12px; }
 .reader-text .chapcon { font-size: .9rem; color: var(--muted); text-align: center; }
 .reader-text figure img[src$=".gif"] { width: min(304px, 100%); image-rendering: auto; }
 .reader-text td img { width: 32px; height: 32px; }
+
+/* ---- Levels (Challenge) ---- */
+.lv-card { margin: 4px 0 14px; padding: 16px; border-radius: 16px; background: linear-gradient(160deg, var(--accent-soft), var(--surface)); border: 1px solid var(--border); text-align: center; }
+.lv-head { display: flex; align-items: baseline; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.lv-label { font-size: 1.1rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.lv-num { font-size: 3rem; line-height: 1.05; font-weight: 850; color: var(--accent); font-variant-numeric: tabular-nums; }
+.lv-total { font-size: .85rem; color: var(--muted); font-weight: 600; }
+.lv-card .bar { height: 6px; margin: 10px 0 12px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; }
+.lv-card .bar span { display: block; height: 100%; width: 0; background: var(--accent); }
+.lv-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+.lv-stats > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 8px 4px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.lv-stats b { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.lv-stats small { font-size: .72rem; color: var(--muted); font-weight: 600; }
+.lv-card .btn.big { width: 100%; }
+.lv-card .hint-text { text-align: left; margin-top: 10px; }
+.lv-credit { font-size: .78rem; color: var(--muted); }
+.lv-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.lv-streaks { font-weight: 650; font-size: .9rem; white-space: nowrap; }
+.pz-credit { font-size: .8rem; color: var(--muted); }
+.pz-credit a { color: inherit; }
+.stats-sub { margin: 10px 0 6px; font-size: .95rem; }
